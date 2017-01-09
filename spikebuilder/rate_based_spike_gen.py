@@ -76,9 +76,9 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         self.transform = conf_dict.get('transform')
 
     def _preprocess(self):
-        BaseSpikeBuilder.steps_per_ms.__set__(self, self._rate_builder.steps_per_ms)
-        BaseSpikeBuilder.time_length.__set__(self, self._rate_builder.time_length) 
-        BaseSpikeBuilder.channels.__set__(self, self._rate_builder.channels)
+        super().with_steps_per_ms(self._rate_builder.steps_per_ms)
+        super().with_time_length(self._rate_builder.time_length) 
+        super().with_channels(self._rate_builder.channels)
 
         super()._preprocess()
 

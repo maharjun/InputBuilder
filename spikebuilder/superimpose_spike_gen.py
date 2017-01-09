@@ -72,12 +72,12 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
             end_time_vect = [sb.time_length + sb.start_time for sb in self._spike_builders_list]
             start_time_vect = [sb.start_time for sb in self._spike_builders.values()]
 
-            BaseSpikeBuilder.time_length.__set__(self, max(end_time_vect) - min(start_time_vect))
-            BaseSpikeBuilder.start_time.__set__(self, min(start_time_vect))
-            BaseSpikeBuilder.steps_per_ms.__set__(self, self._spike_builders_list[0].steps_per_ms)
+            super().with_time_length(max(end_time_vect) - min(start_time_vect))
+            super().with_start_time(min(start_time_vect))
+            super().with_steps_per_ms(self._spike_builders_list[0].steps_per_ms)
 
             channel_set_list = [set(sb.channels) for sb in self._spike_builders_list]
-            BaseSpikeBuilder.channels.__set__(self, sorted(set.union(*channel_set_list)))
+            super().with_channels(sorted(set.union(*channel_set_list)))
 
         super()._preprocess()
 
@@ -104,7 +104,7 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
         """
         if value is not None:
             curr_start_time = self.start_time
-            super().start_time = value
+            super().with_start_time(value)
             offset = self.start_time - curr_start_time
             for __, spike_builder in self._spike_builders.items():
                 spike_builder.start_time = spike_builder.start_time + offset
@@ -333,7 +333,7 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
                 curr_weight_list = spike_weights_appended_by_channel[i][j]
                 spike_bincount_vector[curr_spike_list - self._start_time_step] += curr_weight_list
 
-            # Note that spike_steps_... now represents the relative steps thanks to 
+            # Note that spike_steps_app... now represents the relative steps thanks to 
             # curr_spike_list - self._start_time_step above and np.argwhere
             non_zero_spike_indices = np.argwhere(spike_bincount_vector)[:, 0]
             spike_steps_appended_by_channel[i] = non_zero_spike_indices
