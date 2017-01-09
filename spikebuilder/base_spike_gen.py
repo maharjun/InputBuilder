@@ -95,7 +95,6 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         return self._time_length
 
     @time_length.setter
-    @requires_preprocessing
     @requires_rebuild
     def time_length(self, time_length_):
         if time_length_ >= 0:
@@ -110,7 +109,6 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         return self._steps_per_ms
 
     @steps_per_ms.setter
-    @requires_preprocessing
     @requires_rebuild
     def steps_per_ms(self, steps_per_ms_):
         if steps_per_ms_ >= 1:
@@ -127,7 +125,6 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         return channels_ro
 
     @channels.setter
-    @requires_preprocessing
     @requires_rebuild
     def channels(self, channels_):
         channels_np = np.array(channels_)
@@ -143,7 +140,6 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         return self._start_time_step/self._steps_per_ms
 
     @start_time.setter
-    @requires_preprocessing
     @do_not_freeze
     def start_time(self, start_time_):
         if start_time_ is not None:

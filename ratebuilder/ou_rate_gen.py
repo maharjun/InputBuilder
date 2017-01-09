@@ -88,7 +88,6 @@ class OURateBuilder(BaseRateBuilder):
 
     @mean.setter
     @requires_rebuild
-    @requires_preprocessing
     def mean(self, mean_):
         self._mean = np.float_(mean_)
 
@@ -98,7 +97,6 @@ class OURateBuilder(BaseRateBuilder):
         return self._sigma
 
     @sigma.setter
-    @requires_preprocessing
     @requires_rebuild
     def sigma(self, sigma_):
         if sigma_ > 0:
@@ -113,7 +111,6 @@ class OURateBuilder(BaseRateBuilder):
 
     @theta.setter
     @requires_rebuild
-    @requires_preprocessing
     def theta(self, theta_):
         if theta_ > 0:
             self._theta = np.float_(theta_)

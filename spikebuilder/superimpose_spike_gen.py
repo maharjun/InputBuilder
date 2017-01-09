@@ -87,7 +87,6 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
 
     # overloading the steps_per_ms setter
     @BaseSpikeBuilder.steps_per_ms.setter
-    @requires_preprocessing
     @requires_rebuild
     def steps_per_ms(self, value):
         for __, spike_builder in self._spike_builders.items():
@@ -95,7 +94,6 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
 
     # Overloading the start_time setter
     @BaseSpikeBuilder.start_time.setter
-    @requires_preprocessing
     @do_not_freeze
     def start_time(self, value):
         """
@@ -120,7 +118,7 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
             new_dict[key] = val.frozen_view()
         return new_dict
 
-
+    @property_setter("spike_builders")
     def update_spike_builders(self, spike_builder_list):
         """
         Update the spike builders contained. `spike_builders_list` should contain
@@ -157,6 +155,7 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
                 curr_spike_builder = item[1]
             return_spike_builder_items_list.append(self.update_spike_builder(curr_spike_builder, curr_name))
 
+    @property_setter("spike_builders")
     def update_spike_builder(self, spike_builder_, name=None):
         """
         Update the contained spike builders with the specified entry. The logic
@@ -177,14 +176,8 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
             retval = self.add_spike_builder(spike_builder_, name)
         return retval
 
-    def with_updated_spike_builder(self, spike_builder_, name=None):
-        self.update_spike_builder(spike_builder_, name)
-        return self
-
-
-    @frozen_when_frozen("spike_builders")
+    @property_setter("spike_builders")
     @requires_preprocessed
-    @requires_preprocessing
     @requires_rebuild
     def add_spike_builder(self, spike_builder_, name_=None):
         """
@@ -231,14 +224,9 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
 
         return (name_, self._spike_builders[name_].frozen_view())
 
-    @frozen_when_frozen("spike_builders")
-    def with_added_spike_builder(self, spike_builder_, name_=None):
-        self.add_spike_builder(spike_builder_, name_)
-        return self
 
-    @frozen_when_frozen("spike_builders")
+    @property_setter("spike_builders")
     @requires_preprocessed
-    @requires_preprocessing
     @requires_rebuild
     def modify_spike_builder(self, name, arg):
         """
@@ -281,12 +269,8 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
             raise ValueError("There is no spike builder assigned to the name {}".format(name))
         return (name, self._spike_builders[name].frozen_view())
 
-    @frozen_when_frozen("spike_builders")
-    def with_modified_spike_builder(self, name, arg):
-        self.modify_spike_builder(name, arg)
-        return self
 
-    @frozen_when_frozen("spike_builders")
+    @property_setter("spike_builders")
     def pop_spike_builder(self, name_):
         """
         Removes the spike builder corresponding to the index `index` from the list
@@ -300,11 +284,6 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
             raise ValueError("There is no spike builder assigned to the name {}")
 
         return (name_, return_builder)
-
-    @frozen_when_frozen("spike_builders")
-    def with_deleted_spike_builder(self, name_):
-        self.pop_spike_builder(name_)
-        return self
 
 
     def _build(self):

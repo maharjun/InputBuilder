@@ -103,7 +103,6 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
     # NEED TO WRITE A DICT BASED PARAMETER ASSIGNMENT FUNCTION
     @rate_builder.setter
-    @requires_preprocessing
     @requires_rebuild
     def rate_builder(self, arg):
         try:
@@ -132,19 +131,16 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
     # Overriding Base Property Setters
     @BaseSpikeBuilder.steps_per_ms.setter
-    @requires_preprocessing
     @requires_rebuild
     def steps_per_ms(self, steps_per_ms_):
         self._rate_builder.steps_per_ms = steps_per_ms_
 
     @BaseSpikeBuilder.time_length.setter
-    @requires_preprocessing
     @requires_rebuild
     def time_length(self, time_length_):
         self._rate_builder.time_length = time_length_
 
     @BaseSpikeBuilder.channels.setter
-    @requires_preprocessing
     @requires_rebuild
     def channels(self, channels_):
         self._rate_builder.channels = channels_
