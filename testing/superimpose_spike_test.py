@@ -87,18 +87,27 @@ def main():
     # Change pat3 to contain a new rate generator
     combined_spike_builder.modify_spike_builder('pat3', {
         "rate_builder": ou_rate_builder.with_channels([4, 5, 6]).build().copy_frozen()})
+    combined_spike_builder.start_time = 30000
     combined_spike_builder.build()
     spike_builds = combined_spike_builder.spike_builders
 
-
+    # Calculate the new combined rate array for the new pattern superimposition
     combined_rate_array = np.hstack((
         np.vstack((spike_builds['pat1'].rate_builder.rate_array, np.zeros((3, spike_builds['pat1'].steps_length)))),
         np.vstack((spike_builds['pat2'].rate_builder.rate_array, spike_builds['pat3'].rate_builder.rate_array)),
         np.vstack((spike_builds['pat4'].rate_builder.rate_array, np.zeros((3, spike_builds['pat4'].steps_length))))
         ))
 
+    # Analyse the spikes. If it works it means that comibining sifferent channel
+    # and start time change works fine
     TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array, base_rate)
     analyse_exponential_distrib(TotalIATVector, expected_mean=1/base_rate)
+
+    # Confirm Start time change by checking the start time change in each of the contained generators
+    new_start_times = set(int(gen.start_time+0.5) for gen in combined_spike_builder.spike_builders.values())
+    assert new_start_times == {30000, 110000, 190000}, "The Start Times have NOT been succesfully changed"
+    print("The Start Times have been SUCCESSfully changed")
+
 
 if __name__ == '__main__':
     with ipdb.launch_ipdb_on_exception():

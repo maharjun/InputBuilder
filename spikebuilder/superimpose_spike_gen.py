@@ -104,10 +104,12 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
         """
         if value is not None:
             curr_start_time = self.start_time
-            super().with_start_time(value)
-            offset = self.start_time - curr_start_time
-            for __, spike_builder in self._spike_builders.items():
-                spike_builder.start_time = spike_builder.start_time + offset
+            if value > 0:
+                offset = value - curr_start_time
+                for spike_builder in self._spike_builders.values():
+                    spike_builder.start_time = spike_builder.start_time + offset
+            else:
+                raise ValueError("'start_time' must be non-zero positive")
 
 
     @property

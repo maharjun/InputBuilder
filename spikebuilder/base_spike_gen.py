@@ -149,10 +149,8 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         if start_time_ is not None:
             if start_time_ > 0:
                 self._start_time = np.float64(start_time_)
-            elif start_time_ == 0:
-                self._start_time = None
             else:
-                raise ValueError("'start_time' must be non-negative")
+                raise ValueError("'start_time' must be non-zero positive")
         else:
             self._start_time = None
 
