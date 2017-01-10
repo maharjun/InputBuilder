@@ -77,7 +77,7 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
             super().with_steps_per_ms(self._spike_builders_list[0].steps_per_ms)
 
             channel_set_list = [set(sb.channels) for sb in self._spike_builders_list]
-            super().with_channels(sorted(set.union(*channel_set_list)))
+            super().with_channels(set.union(*channel_set_list))
 
         super()._preprocess()
 

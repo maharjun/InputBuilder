@@ -4,7 +4,7 @@ from . import BaseRateBuilder
 from genericbuilder.propdecorators import *
 
 import numpy as np
-import numpy.random as rd
+from numpy.random import mtrand as mt
 import scipy.signal as sg
 from collections import namedtuple
 
@@ -59,7 +59,7 @@ class OURateBuilder(BaseRateBuilder):
         self.mean     = conf_dict['mean']
         self.sigma    = conf_dict['sigma']
         self.theta    = conf_dict['theta']
-
+        self.rng      = conf_dict.get('rng') or mt
 
     def _preprocess(self):
         super()._preprocess()
@@ -117,6 +117,19 @@ class OURateBuilder(BaseRateBuilder):
         else:
             raise ValueError("'theta' must have a positive non-zero value")
 
+
+    @property
+    def rng(self):
+        return self._rng
+
+    @rng.setter
+    @requires_rebuild
+    def rng(self, rng_):
+        # No special type checks here. random generator is considered
+        # used enough to bring out any type errors quickly enough
+        self._rng = rng_
+    
+
     @property
     @requires_preprocessed
     def DT_params(self):
@@ -172,10 +185,10 @@ class OURateBuilder(BaseRateBuilder):
         # Calculate Initial Condition from Steady state distribution of
         # OU Process. This way we wont have to wait for the process to burn in 
         steady_state_SD = self._sigma/np.sqrt(2*self._theta)
-        rate_array_init = np.random.normal(loc=0, scale=steady_state_SD, size=(self._channels.size, 1))
+        rate_array_init = self._rng.normal(loc=0, scale=steady_state_SD, size=(self._channels.size, 1))
         filter_init_cond = (1- theta_DT*h)*rate_array_init
 
-        awgn_array = rd.normal(size=curr_rate_array_shape)
+        awgn_array = self._rng.normal(size=curr_rate_array_shape)
         filtered_awgn_array, __ = sg.lfilter([sigma_DT*h], [1, -(1 - theta_DT*h)], awgn_array, zi=filter_init_cond)
 
         self._rate_array = filtered_awgn_array + mean

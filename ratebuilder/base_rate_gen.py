@@ -9,6 +9,7 @@ from genericbuilder.propdecorators import *
 class BaseRateBuilder(BaseGenericBuilder):
 
     builder_type = 'rate' 
+    _shallow_copied_vars = {'_rng', 'default_props'}
 
     def __init__(self, conf_dict=None):
         """Constructor for BaseRateGenerator
@@ -31,7 +32,7 @@ class BaseRateBuilder(BaseGenericBuilder):
         self.default_props = {
             'steps_per_ms': 1,
             'channels': [],
-            'time_length': 0,
+            'time_length': 0
         }
         if conf_dict is None:
             conf_dict = {}
@@ -65,8 +66,8 @@ class BaseRateBuilder(BaseGenericBuilder):
     @property
     def steps_per_ms(self):
         """
-        Get or Set the time resolution of the rate pattern by specifying an integer representing the
-        number of time steps per ms
+        Get or Set the time resolution of the rate pattern by specifying an integer
+        representing the number of time steps per ms
 
         :return:
         """
@@ -88,8 +89,8 @@ class BaseRateBuilder(BaseGenericBuilder):
         :GET: This function will return the time length of the built rate pattern
         i.e. the unrounded time length. not `self._steps_length/self.steps_per_ms`
 
-        :SET: This function will round the time to the nearest time step and use that as
-        the actual time length.
+        :SET: This function will round the time to the nearest time step and use
+        that as the actual time length.
 
         :return: An np.float64 scalar
         """
@@ -103,11 +104,12 @@ class BaseRateBuilder(BaseGenericBuilder):
         else:
             raise ValueError("property 'time_length' must be a non-negative numeric value")
 
+
     @property
     def channels(self):
         """
-        Returns read-only view of channels property. In order to make it writable, copy it
-        via X.channels.copy() or np.array(X.channels)
+        Returns read-only view of channels property. In order to make it writable,
+        copy it via X.channels.copy() or np.array(X.channels)
         """
         channels_view = self._channels
         channels_view.setflags(write=False)
@@ -122,6 +124,7 @@ class BaseRateBuilder(BaseGenericBuilder):
             self._channels = np.array(channel_unique_array, dtype=np.uint32)
         else:
             raise ValueError("'channels' must be a vector of non-negative integers")
+
 
     @property
     @requires_preprocessed

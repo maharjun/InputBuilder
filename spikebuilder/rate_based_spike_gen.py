@@ -1,7 +1,7 @@
 __author__ = 'Arjun'
 
 import numpy as np
-import numpy.random as rd
+from numpy.random import mtrand as mt
 
 from . import BaseSpikeBuilder
 from ratebuilder import BaseRateBuilder
@@ -65,15 +65,21 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
         Other properties are documented in BaseSpikeBuilder
     """
+
+    _shallow_copied_vars = {'_rng'}
+
     def __init__(self, conf_dict=None):
 
         self._rate_builder = BaseRateBuilder()
         self._transform = np.copy
+        self._rng = mt
+
 
         super().__init__(conf_dict)
 
         self.rate_builder = conf_dict['rate_builder']
         self.transform = conf_dict.get('transform')
+        self.rng = conf_dict.get('rng') or mt
 
     def _preprocess(self):
         super().with_steps_per_ms(self._rate_builder.steps_per_ms)
@@ -129,6 +135,17 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
     def transform(self, transform_func_):
         self._transform = transform_func_ or np.copy
 
+
+    @property
+    def rng(self):
+        return self._rng
+    
+    @rng.setter
+    @requires_rebuild
+    def rng(self, rng_):
+        self._rng = rng_
+
+
     # Overriding Base Property Setters
     @BaseSpikeBuilder.steps_per_ms.setter
     @requires_rebuild
@@ -153,7 +170,7 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
         nchannels = self._channels.size
         array_shape = (nchannels, self._steps_length)
-        poisson_distrib_spikes_from_rate = rd.poisson(
+        poisson_distrib_spikes_from_rate = self._rng.poisson(
             lam=self._transform(self._rate_builder.rate_array)/(1000*self._steps_per_ms),
             size=array_shape)
 

@@ -1,6 +1,7 @@
 __author__ = 'Arjun'
 
 import numpy as np
+from numpy.random import mtrand as mt
 
 from genericbuilder.baseclass import BaseGenericBuilder
 from genericbuilder.propdecorators import *
@@ -55,14 +56,14 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         self._start_time = None
         self._start_time_step = 1
 
-        self._default_props = {
+        default_props = {
             'time_length': 0,
             'channels': [],
             'steps_per_ms': 1,
             'start_time': None
         }
 
-        updated_props = self._default_props
+        updated_props = default_props
         updated_props.update(conf_dict)
 
         self.time_length = updated_props['time_length']
@@ -127,11 +128,11 @@ class BaseSpikeBuilder(BaseGenericBuilder):
     @channels.setter
     @requires_rebuild
     def channels(self, channels_):
-        channels_np = np.array(channels_)
-        if np.all(channels_np >= 1):
-            self._channels = channels_np.astype(np.uint32)
+        channel_unique_array = np.array(list(set(channels_)), dtype=np.int32)
+        if np.all(channel_unique_array >= 0):
+            self._channels = np.array(channel_unique_array, dtype=np.uint32)
         else:
-            raise ValueError("'channels' should be integers >= 1")
+            raise ValueError("'channels' should be integers >= 0")
 
 
     @property
