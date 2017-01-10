@@ -84,6 +84,18 @@ def main():
     else:
         raise Exception("The combined spike builder changed a frozen generator")
 
+    try:
+        combined_spike_builder.modify_spike_builder('pat3', 
+            {'rate_builder': ou_rate_builder.with_steps_per_ms(2).build().copy_frozen()})
+        combined_spike_builder.build()
+    except AssertionError as E:
+        print("Successfully caught inconsistent stepsize, generated following exception")
+        print(E)
+        combined_spike_builder.modify_spike_builder('pat3', spike_pattern3)
+        ou_rate_builder.steps_per_ms = 1
+    else:
+        raise Exception("The combined spike builder processed an inconsistent stepsize")
+
     # Change pat3 to contain a new rate generator
     combined_spike_builder.modify_spike_builder('pat3', {
         "rate_builder": ou_rate_builder.with_channels([4, 5, 6]).build().copy_frozen()})

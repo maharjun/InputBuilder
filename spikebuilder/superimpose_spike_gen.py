@@ -61,6 +61,10 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
         self.update_spike_builders(conf_dict.get('spike_builders') or [])
         self.start_time = conf_dict.get('start_time')
 
+    def _validate(self):
+        consisent_step_size = (len(set([sb.steps_per_ms for sb in self._spike_builders.values()])) <= 1)
+        assert consisent_step_size, "All spike builders must have consistent stepsize"
+
     def _preprocess(self):
         """
         Calculate time_length, start_time, steps_per_ms from the spike_builders.
@@ -101,7 +105,7 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
         constituent spike builders
         """
         if value is not None:
-            curr_start_time = self.start_time
+            curr_start_time = min([sb.start_time for sb in self._spike_builders.values()])
             if value > 0:
                 offset = value - curr_start_time
                 for spike_builder in self._spike_builders.values():
@@ -177,7 +181,6 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
         return retval
 
     @property_setter("spike_builders")
-    @requires_preprocessed
     @requires_rebuild
     def add_spike_builder(self, spike_builder_, name_=None):
         """
@@ -205,17 +208,13 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
                     " this is used in the default naming scheme")
 
             if get_builder_type(spike_builder_) == 'spike':
-                if (len(self._spike_builders) == 0
-                    or spike_builder_.steps_per_ms == self._steps_per_ms):
-                    if not spike_builder_.is_frozen or spike_builder_.is_built:
-                        self._spike_builders[name_] = spike_builder_.copy()
-                        self._last_count += 1
-                    else:
-                        raise ValueError(
-                            "The spike builder is a frozen, unbuilt spike builder (possibly a frozen"
-                            " view of an unbuilt builder), and can thus not be used to build spikes.")
+                if not spike_builder_.is_frozen or spike_builder_.is_built:
+                    self._spike_builders[name_] = spike_builder_.copy()
+                    self._last_count += 1
                 else:
-                    raise ValueError("The Spike Builders must have a consistent stepsize")
+                    raise ValueError(
+                        "The spike builder is a frozen, unbuilt spike builder (possibly a frozen"
+                        " view of an unbuilt builder), and can thus not be used to build spikes.")
             else:
                 raise ValueError("The object being added is not a spike builder")
         else:
@@ -226,7 +225,6 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
 
 
     @property_setter("spike_builders")
-    @requires_preprocessed
     @requires_rebuild
     def modify_spike_builder(self, name, arg):
         """
@@ -251,20 +249,15 @@ class SuperimposeSpikeBuilder(BaseSpikeBuilder):
         """
         if name in self._spike_builders:
 
-            if get_builder_type(arg) == 'spikes':
+            if get_builder_type(arg) == 'spike':
                 if not arg.is_frozen or arg.is_built:
-                    self._rate_builders[name] = arg.copy()
+                    self._spike_builders[name] = arg.copy()
                 else:
                     raise ValueError(
                         "The spikes builder is a frozen, unbuilt spike builder (possibly a frozen"
                         " view of an unbuilt builder), and can thus not be used to build spikes.")
             else:
-                if (len(self._spike_builders) == 1
-                    or 'steps_per_ms' not in arg
-                    or int(args['steps_per_ms'] + 0.5) == self._steps_per_ms):
-                    self._spike_builders[name].set_properties(arg)
-                else:
-                    raise ValueError("The Spike Builders must have a consistent stepsize")
+                self._spike_builders[name].set_properties(arg)
         else:
             raise ValueError("There is no spike builder assigned to the name {}".format(name))
         return (name, self._spike_builders[name].frozen_view())
