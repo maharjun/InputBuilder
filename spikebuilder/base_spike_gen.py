@@ -49,7 +49,6 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         self._steps_per_ms = 1
         self._channels = np.ndarray((0,), dtype=np.float64())
 
-        self._spike_time_array = np.ndarray((0,), dtype=object)
         self._spike_rel_step_array = np.ndarray((0,), dtype=object)
         self._spike_weight_array = np.ndarray((0,), dtype=object)
 
@@ -89,6 +88,10 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         else:
             self._start_time_step = np.uint32(1)
 
+    def _clear(self):
+        self._spike_rel_step_array = np.ndarray((0,0))
+        self._spike_weight_array = np.ndarray((0,0))
+        super()._clear()
 
     @property
     @requires_preprocessed
@@ -128,7 +131,7 @@ class BaseSpikeBuilder(BaseGenericBuilder):
     @channels.setter
     @requires_rebuild
     def channels(self, channels_):
-        channel_unique_array = np.array(list(set(channels_)), dtype=np.int32)
+        channel_unique_array = np.array(sorted(set(channels_)), dtype=np.int32)
         if np.all(channel_unique_array >= 0):
             self._channels = np.array(channel_unique_array, dtype=np.uint32)
         else:

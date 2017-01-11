@@ -63,6 +63,11 @@ class BaseRateBuilder(BaseGenericBuilder):
         super()._preprocess()
         self._steps_length = np.uint32(self._time_length*self._steps_per_ms + 0.5)
 
+    def _clear(self):
+        self._rate_array = np.ndarray((0,0))
+        super()._clear()
+        
+
     @property
     def steps_per_ms(self):
         """
