@@ -21,7 +21,9 @@ class SuperimposeSpikeBuilder(CombinedSpikeBuilder):
     2.  The common properties are calculated from the input spike trains as follows
 
         time_length
-          as calculated by CombinedSpikeBuilder
+          dependent variable (UNSETTABLE). Calculated as:
+
+          ``max(sb.start_time + sb.time_length)``  where sb is contained spike builder
 
         steps_per_ms:
           as calculated by CombinedSpikeBuilder
@@ -29,10 +31,6 @@ class SuperimposeSpikeBuilder(CombinedSpikeBuilder):
         channels: 
           as calculated by CombinedSpikeBuilder
 
-        start_time:
-          Inferred from min(start_time). When set, it offsets the start_times of
-          all the contained builders by the required amount maintaining the same
-          relative distance
 
     Initialization
     ==============
@@ -52,11 +50,8 @@ class SuperimposeSpikeBuilder(CombinedSpikeBuilder):
     """
 
     def __init__(self, conf_dict=None):
-        
+        conf_dict = {key:conf_dict.get(key) for key in ['spike_builders', 'start_time']}
         super().__init__(conf_dict)
-
-        self.start_time = conf_dict.get('start_time')
-
 
     def _preprocess(self):
         """
@@ -64,27 +59,12 @@ class SuperimposeSpikeBuilder(CombinedSpikeBuilder):
         These functions mimic the property setting functions of the 
         """
         self._final_spike_builders_list = list(self._spike_builders.values())
+        if self._final_spike_builders_list:
+            super().with_time_length(max(sb.start_time + sb.time_length for sb in self._final_spike_builders_list))
         super()._preprocess()
 
     # Making time_length unsettable
     time_length = CombinedSpikeBuilder.time_length.setter(None)
-
-    # Overloading the start_time setter
-    @CombinedSpikeBuilder.start_time.setter
-    @do_not_freeze
-    def start_time(self, value):
-        """
-        If value is None, do nothing, else correct the start times of all
-        constituent spike builders
-        """
-        if value is not None:
-            curr_start_time = min([sb.start_time for sb in self._spike_builders.values()])
-            if value > 0:
-                offset = value - curr_start_time
-                for spike_builder in self._spike_builders.values():
-                    spike_builder.start_time = spike_builder.start_time + offset
-            else:
-                raise ValueError("'start_time' must be non-zero positive")
 
     def _build(self):
         super()._build()

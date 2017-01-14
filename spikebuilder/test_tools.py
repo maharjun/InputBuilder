@@ -35,3 +35,21 @@ def analyse_exponential_distrib(data, expected_mean):
     print("Variance: {:<10.5f} Expected: {:<10.5f}".format(
         np.mean((data - expected_mean)**2),
         expected_mean**2))
+
+
+def getTotalIATVector(spike_builder, rate_array, base_rate):
+    assert rate_array.shape[1] == spike_builder.steps_length
+
+    IATVectors = []
+    for i in range(len(spike_builder.channels)):
+        poisson_sampling_sequence = np.zeros((spike_builder.steps_length,), dtype=np.uint32)
+        non_zero_spike_inds = spike_builder.spike_rel_step_array[i]
+        poisson_sampling_sequence[non_zero_spike_inds] = spike_builder.spike_weight_array[i]
+        IATVectors.append(convert_poisson_seq_to_IAT(
+                              rate_array[i,:],
+                              spike_builder.steps_per_ms,
+                              base_rate,
+                              poisson_sampling_sequence))
+        TotalIATVector = np.concatenate(IATVectors)
+        print("Finished Channel {}".format(spike_builder.channels[i]))
+    return TotalIATVector

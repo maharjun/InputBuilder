@@ -5,26 +5,35 @@ import numpy as np
 
 class CombinedSpikeBuilder(BaseSpikeBuilder):
     """
-    This is a common base class that provides interface functions necessary for any spike builder that is dependent on other spike builders. In the interest of sanity, we have the following requirements
+    This is a common base class that provides interface functions necessary for any
+    spike builder that is dependent on other spike builders. In the interest of sanity,
+    we have the following requirements
     
-    1.  All the Spike Builders MUST have equal resolution i.e. steps_per_ms 
-        must match
+    1.  All the Spike Builders MUST have equal resolution i.e. steps_per_ms must match
 
-    2.  The following common properties are  are completely derived from
-        the properties of the constituent spike builders.
+    2.  The interaction of the common properties with the properties of the constituent
+        spike biulders are as follows.
 
         time_length
-          max(start_time + time_length) - min(start_time). The max and min are taken
-          over all the spike builders in self._final_spike_builders_list. This may or
-          may not be settable depending on the derived class. If settable, it must
-          adjust INDEPENDANT parameters in such a way that the above definition
-          accurately reflects the new time length.
+          This is implementation specific. It may be a completely independent property,
+          in which case, no work need be done. If it is a dependant property, then the
+          calculation and assignment of the same should be done in the _preprocess
+          function prior to calling the _preprocess funtion of the CombinedSpikeBuilder
+          class. Naturally, the settability must be decided by the subclass
 
         steps_per_ms:
           The common steps_per_ms of all the spike builders. NOT SETTABLE
         
         channels: 
           The union of channels from all the spike builders. NOT SETTABLE
+
+        start_time:
+          This is as in BaseSpikeBuilder. i.e. it is an independant variable.
+
+          *NOTE*:
+            The start time of each of the time patterns in self._final_spike_builders_list
+            is treated RELATIVE to the start time of the combined pattern when building
+            spikes.
     
     It has the following structure:
 
@@ -59,6 +68,10 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
       Every spike builder added is assigned a unique identifying number (incremented
       every add). If Name is specified, then the said builder may be addressed by name
       as well
+
+    *start_time*
+      This assigns the start time of the spikebuilder.
+
     """
 
     def __init__(self, conf_dict=None):
@@ -66,21 +79,16 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         self._spike_builders_name_map = {}
         self._last_count = 0
         self._final_spike_builders_list = []
+
+        conf_dict = {key:conf_dict.get(key) for key in ['spike_builders', 'start_time']}
         
         super().__init__(conf_dict)
 
         self.update_spike_builders(conf_dict.get('spike_builders') or [])
 
     def _preprocess(self):
-
         if self._final_spike_builders_list:
             spike_builders_list = self._final_spike_builders_list
-            end_time_vect = [sb.time_length + sb.start_time for sb in spike_builders_list]
-            start_time_vect = [sb.start_time for sb in spike_builders_list]
-
-            spike_builders_list = list(self._spike_builders.values())
-            super().with_time_length(max(end_time_vect) - min(start_time_vect))
-            super().with_start_time(min(start_time_vect))
             super().with_steps_per_ms(spike_builders_list[0].steps_per_ms)
             super().with_channels(set.union(*[set(sb.channels) for sb in spike_builders_list]))
         super()._preprocess()
@@ -183,10 +191,9 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         assert isinstance(name, str) or name is None
         if get_builder_type(spike_builder_) == 'spike':
             if not spike_builder_.is_frozen or spike_builder_.is_built:
-                self._spike_builders[self._last_count + 1] = spike_builder_.copy()
+                self._spike_builders[self._last_count] = spike_builder_.copy()
                 if name:
-                    self._spike_builders_name_map[name] = self._last_count + 1
-                self._last_count += 1
+                    self._spike_builders_name_map[name] = self._last_count
             else:
                 raise ValueError(
                     "The spike builder is a frozen, unbuilt spike builder (possibly a frozen"
@@ -194,7 +201,8 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         else:
             raise ValueError("The object being added is not a spike builder")
 
-        return (self._last_count, self._spike_builders[self._last_count].frozen_view())
+        self._last_count += 1
+        return (self._last_count-1, self._spike_builders[self._last_count-1].frozen_view())
 
 
     @property_setter("spike_builders")
@@ -276,14 +284,19 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
     def _build(self):
         super()._build()
 
+        if self._final_spike_builders_list:
+            within_time_bounds = min([sb.start_time*self._steps_per_ms + sb.steps_length
+                                      for sb in self._final_spike_builders_list]) <= self._steps_length
+            assert within_time_bounds, "The Constituent Spike Builders are not within time bounds"
+
         nchannels = self._channels.size
         channel_index_map = dict(zip(self._channels, range(nchannels)))
 
         for builder in self._final_spike_builders_list:
             builder.build()
 
-        spike_steps_appended_by_channel = [[] for __ in self._channels]
-        spike_weights_appended_by_channel = [[] for __ in self._channels]
+        spike_steps_appended = [[] for __ in self._channels]
+        spike_weights_appended = [[] for __ in self._channels]
         for builder in self._final_spike_builders_list:
             for (channel,
                  channel_spike_step_array,
@@ -291,21 +304,21 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
                                                     builder.spike_step_array,
                                                     builder.spike_weight_array):
 
-                spike_steps_appended_by_channel[channel_index_map[channel]].append(channel_spike_step_array)
-                spike_weights_appended_by_channel[channel_index_map[channel]].append(channel_spike_weight_array)
+                spike_steps_appended[channel_index_map[channel]].append(channel_spike_step_array)
+                spike_weights_appended[channel_index_map[channel]].append(channel_spike_weight_array)
 
         for i in range(nchannels):
             spike_bincount_vector = np.zeros((self._steps_length,), dtype=np.uint32)
-            for j in range(len(spike_steps_appended_by_channel[i])):
-                curr_spike_list = spike_steps_appended_by_channel[i][j]
-                curr_weight_list = spike_weights_appended_by_channel[i][j]
-                spike_bincount_vector[curr_spike_list - self._start_time_step] += curr_weight_list
+            for j in range(len(spike_steps_appended[i])):
+                curr_spike_list = spike_steps_appended[i][j]
+                curr_weight_list = spike_weights_appended[i][j]
+                spike_bincount_vector[curr_spike_list] += curr_weight_list
 
             # Note that spike_steps_app... now represents the relative steps thanks to 
             # curr_spike_list - self._start_time_step above and np.argwhere
             non_zero_spike_indices = np.argwhere(spike_bincount_vector)[:, 0]
-            spike_steps_appended_by_channel[i] = non_zero_spike_indices
-            spike_weights_appended_by_channel[i] = spike_bincount_vector[non_zero_spike_indices]
+            spike_steps_appended[i] = non_zero_spike_indices
+            spike_weights_appended[i] = spike_bincount_vector[non_zero_spike_indices]
 
-        self._spike_rel_step_array = np.array(spike_steps_appended_by_channel)
-        self._spike_weight_array   = np.array(spike_weights_appended_by_channel, dtype=object)
+        self._spike_rel_step_array = np.array(spike_steps_appended)
+        self._spike_weight_array   = np.array(spike_weights_appended, dtype=object)

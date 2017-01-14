@@ -3,29 +3,12 @@ __author__ = 'Arjun'
 import ipdb
 
 with ipdb.launch_ipdb_on_exception():
-    from spikebuilder.test_tools import convert_poisson_seq_to_IAT, analyse_exponential_distrib
+    from spikebuilder.test_tools import analyse_exponential_distrib, getTotalIATVector
     from spikebuilder import SuperimposeSpikeBuilder
     from spikebuilder import RateBasedSpikeBuilder
     from ratebuilder import OURateBuilder
 
 import numpy as np
-
-def getTotalIATVector(combined_spike_builder, combined_rate_array, base_rate):
-    assert combined_rate_array.shape[1] == combined_spike_builder.steps_length
-
-    IATVectors = []
-    for i in range(len(combined_spike_builder.channels)):
-        poisson_sampling_sequence = np.zeros((combined_spike_builder.steps_length,), dtype=np.uint32)
-        non_zero_spike_inds = combined_spike_builder.spike_rel_step_array[i]
-        poisson_sampling_sequence[non_zero_spike_inds] = combined_spike_builder.spike_weight_array[i]
-        IATVectors.append(convert_poisson_seq_to_IAT(
-                              combined_rate_array[i,:],
-                              combined_spike_builder.steps_per_ms,
-                              base_rate,
-                              poisson_sampling_sequence))
-        TotalIATVector = np.concatenate(IATVectors)
-        print("Finished Channel {}".format(combined_spike_builder.channels[i]))
-    return TotalIATVector
 
 def main():
     # It is assumed that the following rate gen will almost never produce
@@ -41,18 +24,17 @@ def main():
 
     spike_pattern1 = RateBasedSpikeBuilder({
         'rate_builder': ou_rate_builder.build().copy_frozen(),
-        'start_time': 1})
+        'start_time': 0})
     spike_pattern2 = RateBasedSpikeBuilder({
         'rate_builder': ou_rate_builder.build().copy_frozen(),
-        'start_time': 80001})
+        'start_time': 80000})
     spike_pattern3 = RateBasedSpikeBuilder({
         'rate_builder': ou_rate_builder.build().copy_frozen(),
-        'start_time': 80001})
+        'start_time': 80000})
     spike_pattern4 = RateBasedSpikeBuilder({
         'rate_builder': ou_rate_builder.build().copy_frozen(),
-        'start_time': 160001})
+        'start_time': 160000})
 
-    
     combined_spike_builder = SuperimposeSpikeBuilder({
         'spike_builders': [('pat1', spike_pattern1),
                            ('pat2', spike_pattern2),
@@ -117,8 +99,8 @@ def main():
 
     # Confirm Start time change by checking the start time change in each of the contained generators
     new_start_times = set(int(gen.start_time+0.5) for gen in combined_spike_builder.spike_builders.values())
-    assert new_start_times == {30000, 110000, 190000}, "The Start Times have NOT been succesfully changed"
-    print("The Start Times have been SUCCESSfully changed")
+    assert new_start_times == {0, 80000, 160000}, "The Start Times have been unsuccesfully changed"
+    print("The Start Times have been SUCCESSfully NOT changed")
 
 
 if __name__ == '__main__':

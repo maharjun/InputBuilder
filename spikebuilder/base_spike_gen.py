@@ -52,23 +52,14 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         self._spike_rel_step_array = np.ndarray((0,), dtype=object)
         self._spike_weight_array = np.ndarray((0,), dtype=object)
 
-        self._start_time = None
-        self._start_time_step = 1
+        self._start_time = 0
+        self._start_time_step = 0
 
-        default_props = {
-            'time_length': 0,
-            'channels': [],
-            'steps_per_ms': 1,
-            'start_time': None
-        }
-
-        updated_props = default_props
-        updated_props.update(conf_dict)
-
-        self.time_length = updated_props['time_length']
-        self.steps_per_ms = updated_props['steps_per_ms']
-        self.channels = updated_props['channels']
-        self.start_time = updated_props['start_time']
+        conf_dict = conf_dict or {}
+        self.time_length = conf_dict.get('time_length') or 0
+        self.steps_per_ms = conf_dict.get('steps_per_ms') or 1
+        self.channels = conf_dict.get('channels') if 'channels' in conf_dict else []
+        self.start_time = conf_dict.get('start_time') or 0
 
     def _build(self):
         super()._build()
@@ -82,11 +73,8 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         """
         super()._preprocess()
         self._steps_length = np.uint32(self._time_length * self._steps_per_ms + 0.5)
-        if self._start_time is not None:
-            self._start_time_step = max(np.uint32(1),
-                                        np.uint32(self._start_time*self._steps_per_ms + 0.5))
-        else:
-            self._start_time_step = np.uint32(1)
+        self._start_time_step = np.uint32(self._start_time*self._steps_per_ms + 0.5)
+
 
     def _clear(self):
         self._spike_rel_step_array = np.ndarray((0,0))
@@ -146,13 +134,11 @@ class BaseSpikeBuilder(BaseGenericBuilder):
     @start_time.setter
     @do_not_freeze
     def start_time(self, start_time_):
-        if start_time_ is not None:
-            if start_time_ > 0:
-                self._start_time = np.float64(start_time_)
-            else:
-                raise ValueError("'start_time' must be non-zero positive")
+        if start_time_ >= 0:
+            self._start_time = np.float64(start_time_)
         else:
-            self._start_time = None
+            raise ValueError("'start_time' must be non-negative")
+
 
     @property
     @requires_preprocessed
