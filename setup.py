@@ -5,14 +5,14 @@
 from setuptools import setup, find_packages
 setup(
     name="inputbuilder",
-    version="0.7",
+    version="0.7.1",
     packages=['ratebuilder', 'spikebuilder'],
     author="Arjun Rao",
     author_email="arjun210493@gmail.com",
     description="This module provides the infrastructure to create custom (spike/rate) builders",
     license="MIT",
     keywords="Generic Builder builder generic",
-    install_requires=['genericbuilder>=0.5', 'numpy', 'scipy'],
+    install_requires=['genericbuilder>=0.5.1', 'numpy', 'scipy'],
     provides=['ratebuilder', 'spikebuilder'],
-    dependency_links=['git+ssh://git@git.tugraz.at/GenericBuilder.git@releases#egg=genericbuilder-0.5']
+    dependency_links=['git+ssh://git@git.tugraz.at/GenericBuilder.git@releases#egg=genericbuilder-0.5.1']
 )
