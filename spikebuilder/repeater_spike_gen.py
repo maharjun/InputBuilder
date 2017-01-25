@@ -1,5 +1,7 @@
 from . import CombinedSpikeBuilder
 from genericbuilder.propdecorators import *
+from collections import namedtuple
+import numpy as np
 
 class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     """
@@ -79,6 +81,13 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     @property_setter('repeat_instances')
     @requires_rebuild
     def add_repeat_instance(self, start_time, sb_id_val):
+        """
+        This function adds a repeat instance of the spike builder refereced by
+        sb_id_val, which can be either an id or a name, at the specified start_time.
+
+        Note that this doesnt validate whether this spike builder overlaps with
+        another spike builder or not. That is done during preprocessing
+        """
         if isinstance(sb_id_val, str):
             actual_id = self._spike_builders_name_map[sb_id_val]
         else:
@@ -93,7 +102,11 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     @property_setter('repeat_instances')
     @requires_rebuild
     def pop_repeat_instance(self, start_time=None, sb_id_val=None):
-        
+        """
+        This function removes a single spike generator specified by either the
+        start_time and/or he sb_id_val (either id or name). If both are unspecified,
+        a random repeat instance is popped
+        """
         if start_time is None and sb_id_val is None:
             return self._repeat_instances_set.pop
         else:
@@ -119,3 +132,43 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     @requires_rebuild
     def clear_repeat_instances(self):
         self._repeat_instances_set.clear()
+
+    LegacyPatternInfo = namedtuple('LegacyPatternInfo', ['spike_times',
+                                                         'pattern_ind_t',
+                                                         'pattern_seq',
+                                                         'pattern_ind_p',
+                                                         'pattern_start_p',
+                                                         'pattern_length_p'])
+
+    @requires_built
+    def get_legacy_struct(self):
+        """
+        This returns the legacy tuple for use with christophs code. only in this case
+        it is a named_tuple which has backward compatibility with the plain tuple
+        """
+        LegacyPatternInfo = RepeaterSpikeBuilder.LegacyPatternInfo
+        spike_times = self.spike_time_array
+        pattern_ind_t = -1*np.ones(self.steps_length)
+        pattern_ind_p = np.zeros(len(self._repeat_instances_sorted))
+        pattern_start_p = np.zeros(len(self._repeat_instances_sorted))
+        pattern_length_p = np.zeros(len(self._repeat_instances_sorted))
+
+        for i in range(len(_repeat_instances_sorted)):
+            ri_entry = _repeat_instances_sorted[i]
+            sb = self._spike_builders[ri_entry[1]]
+            steps_per_ms = sb.steps_per_ms
+            sb_start_time_step = int(ri_entry[0]*steps_per_ms + 0.5)
+            sb_end_time_step = sb_start_time_step + sb.steps_length
+
+            pattern_ind_t[sb_start_time_step:sb_end_time_step] = ri_entry[1]
+            pattern_ind_p[i] = ri_entry[1]
+            pattern_start_p[i] = (self._start_time_step + sb_start_time_step)/steps_per_ms
+            pattern_length_p[i] = sb.time_length
+
+        return LegacyPatternInfo(
+            spike_times=spike_times,
+            pattern_ind_t=pattern_ind_t,
+            pattern_seq=None,
+            pattern_ind_p=pattern_ind_p,
+            pattern_start_p=pattern_start_p,
+            pattern_length_p=pattern_length_p)
