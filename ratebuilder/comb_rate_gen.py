@@ -1,19 +1,20 @@
 from . import BaseRateBuilder
 from genericbuilder.propdecorators import *
-from genericbuilder.tools import get_builder_type
+from genericbuilder.tools import get_builder_type, get_unsettable
 
 import numpy as np
 
 class CombinedRateBuilder(BaseRateBuilder):
 
     def __init__(self, conf_dict):
+        # Initialization done directly as no None initializable property / function
+        # corresponding to _rate_builders
         self._rate_builders = []
         super().__init__({})
 
-        relevant_keys = ['rate_builders', 'time_length', 'transform', 'use_hist_eq']
+        relevant_keys = ['rate_builders', 'transform', 'use_hist_eq']
         conf_dict = {key:conf_dict.get(key) for key in relevant_keys}
-        self.add_rate_builders(conf_dict.get('rate_builders') or [])
-        self.time_length = conf_dict.get('time_length') or None
+        self.add_rate_builders(conf_dict.get('rate_builders'))
         self.transform = conf_dict.get('transform') or combine_sum
         self.use_hist_eq = conf_dict.get('use_hist_eq') or False
 
@@ -33,13 +34,15 @@ class CombinedRateBuilder(BaseRateBuilder):
         has_common_steps_per_ms = len(set(rb.steps_per_ms for rb in self._rate_builders)) <= 1
         assert has_common_steps_per_ms, "All constituent rate builders must have a common step size"
 
-    channels = BaseRateBuilder.channels.setter(None)
-    steps_per_ms = BaseRateBuilder.steps_per_ms.setter(None)
+    channels = get_unsettable(BaseRateBuilder, 'channels')
+    steps_per_ms = get_unsettable(BaseRateBuilder, 'steps_per_ms')
 
     @BaseRateBuilder.time_length.setter
     @requires_rebuild
     def time_length(self, time_length_):
-        if time_length_ is not None:
+        if time_length_ is None:
+            super().with_time_length(None)
+        else:
             for rb in self._rate_builders:
                 rb.time_length = time_length_
 
@@ -50,7 +53,10 @@ class CombinedRateBuilder(BaseRateBuilder):
     @transform.setter
     @requires_rebuild
     def transform(self, transform_):
-        self._transform = transform_
+        if transform_ is None:
+            self._init_attr('_transform', combine_sum)
+        else:
+            self._transform = transform_
 
 
     @property
@@ -71,11 +77,14 @@ class CombinedRateBuilder(BaseRateBuilder):
         
     @property_setter('rate_builders')
     def add_rate_builders(self, rate_builder_array):
-        for rb in rate_builder_array:
-            if get_builder_type(rb) == 'rate':
-                self._rate_builders.append(rb)
-            else:
-                raise TypeError("the rate_builder_array must contain only rate builder objects")
+        if rate_builder_array is None:
+            self._init_attr('_rate_builders', [])
+        else:
+            for rb in rate_builder_array:
+                if get_builder_type(rb) == 'rate':
+                    self._rate_builders.append(rb)
+                else:
+                    raise TypeError("the rate_builder_array must contain only rate builder objects")
     
 
     def _build(self):

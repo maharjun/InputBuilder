@@ -5,9 +5,46 @@ import numpy as np
 
 class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     """
-    NEED TO WRITE DOCUMENTATION HERE
+    ======================
+     RepeaterSpikeBuilder
+    ======================
+
+    This spike builder enables the creations of patterns that are copies of a fixed
+    set of base patterns.
+
+    Relevant Properties and Initialization
+    ======================================
+
+    The base patterns are given as input following the syntax in CombinedSpikeBuilder.
+    The copies are presented to the class as tuples of (start_time, spike_builder_id).
+    Where spike_builder_id is either the associated name, or the id number of the
+    spike builder that you want placed at start_time. the start_time is specified in
+    ms relative to the start of the RepeaterSpikeBuilder pattern. each such copy is
+    termed as **repeat instance**
+
+    Init Parameters
+    ---------------
+
+    In the init function, we have the following relevant parameters.
+
+    spike_builders:
+
+      This is he same as documented in CombinedSpikeBuilder
+
+    start_time:
+
+      The start time of the RepeaterSpikeBuilder pattern in ms
+
+    Editing Repeat instances
+    ------------------------
+
+    Repeat instances can be added or deleted using the `add_repeat_instance` and
+    `pop_repeat_instance` functions. See these function docs for details
     """
     def __init__(self, conf_dict):
+        # Default Init done directly here because of no property setter that can
+        # take None argument effectively. will deal with this later if necessary
+
         self._repeat_instances_set = set()
         self._repeat_instances_sorted = []  # derived from 
         self._is_time_length_assigned = False
@@ -15,7 +52,7 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
         conf_dict_base = {key:conf_dict.get(key) for key in ['spike_builders', 'start_time']}
 
         super().__init__(conf_dict_base)
-        self.time_length = conf_dict.get('time_length') or None
+        self.time_length = conf_dict.get('time_length')
 
 
     def _validate(self):
@@ -72,11 +109,13 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     @CombinedSpikeBuilder.time_length.setter
     @requires_rebuild
     def time_length(self, time_length_):
-        if time_length_ is not None:
+        if time_length_ is None:
+            super().with_time_length(None)
+        elif time_length_ == 0:
+            self._is_time_length_assigned = False
+        else:
             super().with_time_length(time_length_)
             self._is_time_length_assigned = True
-        else:
-            self._is_time_length_assigned = False
 
     @property_setter('repeat_instances')
     @requires_rebuild

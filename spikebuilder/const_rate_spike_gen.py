@@ -9,11 +9,13 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
     _shallow_copied_vars = {'_rng'}
 
     def __init__(self, config_dict):
-        self._rate = 0
 
         super().__init__(config_dict)
-        self.rate = config_dict.get('rate') or 0
-        self.rng = config_dict.get('rng') or mt
+        self.rate = None
+        self.rng = None
+
+        self.rate = config_dict.get('rate')
+        self.rng = config_dict.get('rng')
 
     @property
     def rate(self):
@@ -22,10 +24,13 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
     @rate.setter
     @requires_rebuild
     def rate(self, rate_val):
-        if rate_val >= 0:
-            self._rate = float(rate_val)
+        if rate_val is None:
+            self._init_attr('_rate', 0.0)
         else:
-            raise ValueError("'rate' must be a non-negative float")
+            if rate_val >= 0:
+                self._rate = float(rate_val)
+            else:
+                raise ValueError("'rate' must be a non-negative float")
 
     @property
     def rng(self):
@@ -33,7 +38,10 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
     @rng.setter
     def rng(self, rng_):
-        self._rng = rng_
+        if rng_ is None:
+            self._init_attr('_rng', mt)
+        else:
+            self._rng = rng_
 
     def _build(self):
         super()._build()

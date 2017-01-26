@@ -29,30 +29,19 @@ class BaseRateBuilder(BaseGenericBuilder):
         """
         super().__init__(conf_dict)
         
-        self.default_props = {
-            'steps_per_ms': 1,
-            'channels': [],
-            'time_length': 0
-        }
         if conf_dict is None:
             conf_dict = {}
 
         # Default initialization
         # Initialization for internal parameters
-        self._rate_array = np.ndarray((0,0))
-        self._time_length = 0
-        self._steps_length = 0
-        self._steps_per_ms = 1
-        self._channels = np.array((0,), dtype=np.uint32)
-
-        temp_dict = self.default_props.copy()
-        temp_dict.update(conf_dict)
+        self.time_length = None
+        self.steps_per_ms = None
+        self.channels = None
 
         # Assuming dict like object. else this will raise an exception
-        self._rate_array = np.ndarray((0, 0))
-        self.steps_per_ms = temp_dict['steps_per_ms']
-        self.time_length  = temp_dict['time_length']
-        self.channels     = temp_dict['channels']
+        self.steps_per_ms = conf_dict.get('steps_per_ms')
+        self.time_length  = conf_dict.get('time_length')
+        self.channels     = conf_dict.get('channels')
 
 
     def _build(self):
@@ -81,10 +70,13 @@ class BaseRateBuilder(BaseGenericBuilder):
     @steps_per_ms.setter
     @requires_rebuild
     def steps_per_ms(self, steps_per_ms_):
-        if steps_per_ms_ >= 1:
-            self._steps_per_ms = np.uint32(steps_per_ms_)
+        if steps_per_ms_ is None:
+            self._init_attr('_steps_per_ms', np.uint32(1))
         else:
-            raise ValueError("'steps_per_ms' must be non-zero positive integer")
+            if steps_per_ms_ >= 1:
+                self._steps_per_ms = np.uint32(steps_per_ms_)
+            else:
+                raise ValueError("'steps_per_ms' must be non-zero positive integer")
 
     @property
     def time_length(self):
@@ -104,10 +96,13 @@ class BaseRateBuilder(BaseGenericBuilder):
     @time_length.setter
     @requires_rebuild
     def time_length(self, time_length_):
-        if time_length_ >= 0:
-            self._time_length  = np.float64(time_length_)
+        if time_length_ is None:
+            self._init_attr('_time_length', np.float64(0))
         else:
-            raise ValueError("property 'time_length' must be a non-negative numeric value")
+            if time_length_ >= 0:
+                self._time_length  = np.float64(time_length_)
+            else:
+                raise ValueError("property 'time_length' must be a non-negative numeric value")
 
 
     @property
@@ -124,11 +119,14 @@ class BaseRateBuilder(BaseGenericBuilder):
     @requires_rebuild
     def channels(self, channels_):
         # Assuming 1D iterable
-        channel_unique_array = np.array(list(set(channels_)), dtype=np.int32)
-        if np.all(channel_unique_array >= 0):
-            self._channels = np.array(channel_unique_array, dtype=np.uint32)
+        if channels_ is None:
+            self._init_attr('_channels', np.ndarray(0, dtype=np.uint32))
         else:
-            raise ValueError("'channels' must be a vector of non-negative integers")
+            channel_unique_array = np.array(list(set(channels_)), dtype=np.int32)
+            if np.all(channel_unique_array >= 0):
+                self._channels = np.array(channel_unique_array, dtype=np.uint32)
+            else:
+                raise ValueError("'channels' must be a vector of non-negative integers")
 
 
     @property

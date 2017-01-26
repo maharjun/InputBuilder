@@ -1,5 +1,6 @@
 from . import BaseSpikeBuilder
 from genericbuilder.propdecorators import *
+from genericbuilder.tools import get_unsettable
 
 import numpy as np
 
@@ -75,16 +76,19 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
     """
 
     def __init__(self, conf_dict=None):
-        self._spike_builders = {}
-        self._spike_builders_name_map = {}
-        self._last_count = 0
-        self._final_spike_builders_list = []
+        # self._final_spike_builders_list = [] [Must be set in preprocess of derived class]
 
+        # Filtering Input Dict
         conf_dict = {key:conf_dict.get(key) for key in ['spike_builders', 'start_time']}
         
+        # Super Initialization
         super().__init__(conf_dict)
 
-        self.update_spike_builders(conf_dict.get('spike_builders') or [])
+        # Default Initialization
+        self.update_spike_builders(None)
+
+        # Init from dict
+        self.update_spike_builders(conf_dict.get('spike_builders'))
 
     def _preprocess(self):
         if self._final_spike_builders_list:
@@ -108,8 +112,8 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
             new_dict[key] = self._spike_builders[val].frozen_view()
         return new_dict
     
-    steps_per_ms = BaseSpikeBuilder.steps_per_ms.setter(None)
-    channels = BaseSpikeBuilder.channels.setter(None)
+    steps_per_ms = get_unsettable(BaseSpikeBuilder, 'steps_per_ms')
+    channels = get_unsettable(BaseSpikeBuilder, 'channels')
 
     @property_setter("spike_builders")
     def update_spike_builders(self, spike_builder_list):
@@ -135,7 +139,16 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         must be an instance of a spike builder object (i.e. `get_builder_type()` must return
         `True`). In the case of modification of existing spike builder, the spike_builder_obj
         may be a dict (see `modify_spike_builder`)
+
+        Also Importantly,
+
+        passing None to update_spike_builder does nothing
         """
+        if spike_builder_list is None:
+            self._init_attr('_spike_builders', {})
+            self._init_attr('_spike_builders_name_map', {})
+            self._init_attr('_last_count', 0)
+            return []
 
         return_spike_builder_items_list = []
         for item in spike_builder_list:

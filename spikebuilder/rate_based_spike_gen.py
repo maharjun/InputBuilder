@@ -6,6 +6,7 @@ from numpy.random import mtrand as mt
 from . import BaseSpikeBuilder
 from ratebuilder import BaseRateBuilder
 from genericbuilder.propdecorators import *
+from genericbuilder.tools import get_builder_type
 
 class RateBasedSpikeBuilder(BaseSpikeBuilder):
     """
@@ -16,7 +17,7 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         Initialization
         ==============
         
-        The generator is initialized by providing a dict with only two parameters 
+        The builder is initialized by providing a dict with only two parameters 
         (specified below)
 
         Initialization Parameters
@@ -34,6 +35,10 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
         *start_time*
           Start time for the Spike Pattern. Default: dt
+        
+        *rng*
+          The RandomSate object that is used for random generation. Defaults to numpy
+          default
 
         Properties
         ==========
@@ -70,16 +75,20 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
     def __init__(self, conf_dict=None):
 
-        self._rate_builder = BaseRateBuilder()
-        self._transform = np.copy
-        self._rng = mt
+        # default init of super and current class
+        super().__init__({})
+        self.rate_builder = None
+        self.transform = None
+        self.rng = None
 
-
+        relevant_props = {'rate_builder', 'transform', 'start_time', 'rng'}
+        conf_dict = {key:conf_dict.get(key) for key in relevant_props}
         super().__init__(conf_dict)
-
-        self.rate_builder = conf_dict['rate_builder']
+        
+        self.rate_builder = conf_dict.get('rate_builder')
         self.transform = conf_dict.get('transform')
-        self.rng = conf_dict.get('rng') or mt
+        self.rng = conf_dict.get('rng')
+        
 
     def _preprocess(self):
         super().with_steps_per_ms(self._rate_builder.steps_per_ms)
@@ -107,24 +116,21 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         return self._rate_builder.frozen_view()
 
 
-    # NEED TO WRITE A DICT BASED PARAMETER ASSIGNMENT FUNCTION
     @rate_builder.setter
     @requires_rebuild
     def rate_builder(self, arg):
-        try:
-            builder_type = arg.builder_type
-        except AttributeError:
-            builder_type = None
-
-        if builder_type == 'rate':
-            if not arg.is_frozen or arg.is_built:
-                self._rate_builder = arg.copy()
-            else:
-                raise ValueError(
-                    "The rate generator is a frozen, unbuilt rate generator (possible a frozen"
-                    " view of an unbuilt generator), and can thus not be used to generate spikes.")
+        if arg is None:
+            self._init_attr('_rate_builder', BaseRateBuilder())
         else:
-            self._rate_builder.set_properties(arg)
+            if get_builder_type(arg) == 'rate':
+                if not arg.is_frozen or arg.is_built:
+                    self._rate_builder = arg.copy()
+                else:
+                    raise ValueError(
+                        "The rate generator is a frozen, unbuilt rate generator (possible a frozen"
+                        " view of an unbuilt generator), and can thus not be used to generate spikes.")
+            else:
+                self._rate_builder.set_properties(arg)
 
     @property
     def transform(self):
@@ -133,7 +139,10 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
     @transform.setter
     @requires_rebuild
     def transform(self, transform_func_):
-        self._transform = transform_func_ or np.copy
+        if transform_func_ is None:
+            self._init_attr('_transform', np.copy)
+        else:
+            self._transform = transform_func_
 
 
     @property
@@ -143,24 +152,36 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
     @rng.setter
     @requires_rebuild
     def rng(self, rng_):
-        self._rng = rng_
+        if rng_ is None:
+            self._init_attr('_rng', mt)
+        else:
+            self._rng = rng_
 
 
     # Overriding Base Property Setters
     @BaseSpikeBuilder.steps_per_ms.setter
     @requires_rebuild
     def steps_per_ms(self, steps_per_ms_):
-        self._rate_builder.steps_per_ms = steps_per_ms_
+        if steps_per_ms_ is None:
+            super().with_steps_per_ms(None)
+        else:
+            self._rate_builder.steps_per_ms = steps_per_ms_
 
     @BaseSpikeBuilder.time_length.setter
     @requires_rebuild
     def time_length(self, time_length_):
-        self._rate_builder.time_length = time_length_
+        if time_length_ is None:
+            super().with_time_length(None)
+        else:
+            self._rate_builder.time_length = time_length_
 
     @BaseSpikeBuilder.channels.setter
     @requires_rebuild
     def channels(self, channels_):
-        self._rate_builder.channels = channels_
+        if channels_ is None:
+            super().with_channels(None)
+        else:
+            self._rate_builder.channels = channels_
 
 
     def _build(self):

@@ -64,7 +64,7 @@ class SuperimposeSpikeBuilder(CombinedSpikeBuilder):
         super()._preprocess()
 
     # Making time_length unsettable
-    time_length = CombinedSpikeBuilder.time_length.setter(None)
+    time_length = get_unsettable(CombinedSpikeBuilder, 'time_length')
 
     def _build(self):
         super()._build()
