@@ -78,7 +78,6 @@ class LegacyRateBuilder(BaseRateBuilder):
     is returned.
 
     """
-    _shallow_copied_vars = {'_rng'}
 
     def __init__(self, config_dict):
         """

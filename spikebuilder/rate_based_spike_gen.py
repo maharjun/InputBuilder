@@ -71,7 +71,6 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         Other properties are documented in BaseSpikeBuilder
     """
 
-    _shallow_copied_vars = {'_rng'}
 
     def __init__(self, conf_dict=None):
 
@@ -113,7 +112,7 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
              generator to update.
           2. An instance of BaseRateBuilder
         """
-        return self._rate_builder.frozen_view()
+        return self._rate_builder.copy_immutable()
 
 
     @rate_builder.setter
@@ -124,7 +123,7 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         else:
             if get_builder_type(arg) == 'rate':
                 if not arg.is_frozen or arg.is_built:
-                    self._rate_builder = arg.copy()
+                    self._rate_builder = arg.copy_immutable()
                 else:
                     raise ValueError(
                         "The rate generator is a frozen, unbuilt rate generator (possible a frozen"
@@ -165,7 +164,9 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         if steps_per_ms_ is None:
             super().with_steps_per_ms(None)
         else:
+            self._rate_builder = self._rate_builder.copy_mutable()
             self._rate_builder.steps_per_ms = steps_per_ms_
+            self._rate_builder = self._rate_builder.copy_immutable()
 
     @BaseSpikeBuilder.time_length.setter
     @requires_rebuild
@@ -173,7 +174,9 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         if time_length_ is None:
             super().with_time_length(None)
         else:
+            self._rate_builder = self._rate_builder.copy_mutable()
             self._rate_builder.time_length = time_length_
+            self._rate_builder = self._rate_builder.copy_immutable()
 
     @BaseSpikeBuilder.channels.setter
     @requires_rebuild
@@ -181,13 +184,14 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         if channels_ is None:
             super().with_channels(None)
         else:
+            self._rate_builder = self._rate_builder.copy_mutable()
             self._rate_builder.channels = channels_
-
+            self._rate_builder = self._rate_builder.copy_immutable()
 
     def _build(self):
 
         super()._build()
-        self._rate_builder.build()
+        self._rate_builder = self._rate_builder.copy_rebuilt()
 
         nchannels = self._channels.size
         array_shape = (nchannels, self._steps_length)

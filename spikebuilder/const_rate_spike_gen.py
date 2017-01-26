@@ -6,7 +6,6 @@ import numpy as np
 
 class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
-    _shallow_copied_vars = {'_rng'}
 
     def __init__(self, config_dict):
 

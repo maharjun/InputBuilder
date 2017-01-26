@@ -45,9 +45,10 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
         # Default Init done directly here because of no property setter that can
         # take None argument effectively. will deal with this later if necessary
 
-        self._repeat_instances_set = set()
+        super().__init__({})
+        self._repeat_instances_set = frozenset()
         self._repeat_instances_sorted = []  # derived from 
-        self._is_time_length_assigned = False
+        self.time_length = None
 
         conf_dict_base = {key:conf_dict.get(key) for key in ['spike_builders', 'start_time']}
 
@@ -74,7 +75,9 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
         
         # Adding Actual Spike Builders 
         self._repeat_instances_sorted = sorted(self._repeat_instances_set)
-        actual_spike_builders_list = [self._spike_builders[sb_uid].with_start_time(sb_st).copy()
+        actual_spike_builders_list = [self._spike_builders[sb_uid].copy_mutable()
+                                                                  .with_start_time(sb_st)
+                                                                  .copy_immutable()
                                       for sb_st, sb_uid in self._repeat_instances_sorted]
         
         # Adding Filler Spike Builders if present
@@ -86,11 +89,11 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
             filler_start_end_times = [(all_start_end_times[i][1], all_start_end_times[i+1][0])
                                       for i in range (len(self._repeat_instances_sorted)-1)]
 
-            filler_spike_builder_copy = self._spike_builders[filler_uid].copy()
+            filler_sb = self._spike_builders[filler_uid]
             filler_spike_builders_list = [
-                filler_spike_builder_copy.with_start_time(fill_beg)
-                                         .with_time_length(fill_end - fill_beg)
-                                         .copy()
+                filler_sb.copy_mutable().with_start_time(fill_beg)
+                                        .with_time_length(fill_end - fill_beg)
+                                        .copy_immutable()
                 for fill_beg, fill_end in filler_start_end_times]
 
         self._final_spike_builders_list = actual_spike_builders_list + filler_spike_builders_list
@@ -111,6 +114,7 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     def time_length(self, time_length_):
         if time_length_ is None:
             super().with_time_length(None)
+            self._is_time_length_assigned = False
         elif time_length_ == 0:
             self._is_time_length_assigned = False
         else:
@@ -134,7 +138,7 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
 
         new_ri = (float(start_time), actual_id)
         if new_ri not in self._repeat_instances_set:
-            self._repeat_instances_set.add(new_ri)
+            self._repeat_instances_set = self._repeat_instances_set.union({new_ri})
         else:
             raise KeyError("The repeat instance {} is already contained in the spike builder".format(new_ri))
 
@@ -147,7 +151,10 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
         a random repeat instance is popped
         """
         if start_time is None and sb_id_val is None:
-            return self._repeat_instances_set.pop
+            new_set = set(self._repeat_instances_set)
+            popped_ri = new_set.pop
+            self._repeat_instances_set = frozenset(new_set)
+            return popped_ri
         else:
             repeat_instance_list = list(self._repeat_instances_set)
 
@@ -162,7 +169,7 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
                 repeat_instance_list = [x for x in repeat_instance_list if x[1] == actual_id]
 
             if repeat_instance_list:
-                self._repeat_instances_set.remove(repeat_instance_list[0])
+                self._repeat_instances_set = self._repeat_instances_set.difference({repeat_instance_list[0]})
                 return repeat_instance_list[0]
             else:
                 raise KeyError("The required repeat instance was not found")
@@ -170,7 +177,7 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     @property_setter('repeat_instances')
     @requires_rebuild
     def clear_repeat_instances(self):
-        self._repeat_instances_set.clear()
+        self._repeat_instances_set = frozenset()
 
     LegacyPatternInfo = namedtuple('LegacyPatternInfo', ['spike_times',
                                                          'pattern_ind_t',

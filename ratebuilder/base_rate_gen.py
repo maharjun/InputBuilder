@@ -9,7 +9,6 @@ from genericbuilder.propdecorators import *
 class BaseRateBuilder(BaseGenericBuilder):
 
     builder_type = 'rate' 
-    _shallow_copied_vars = {'_rng', 'default_props'}
 
     def __init__(self, conf_dict=None):
         """Constructor for BaseRateGenerator
@@ -111,7 +110,7 @@ class BaseRateBuilder(BaseGenericBuilder):
         Returns read-only view of channels property. In order to make it writable,
         copy it via X.channels.copy() or np.array(X.channels)
         """
-        channels_view = self._channels
+        channels_view = self._channels[:]
         channels_view.setflags(write=False)
         return channels_view
 
@@ -125,6 +124,7 @@ class BaseRateBuilder(BaseGenericBuilder):
             channel_unique_array = np.array(list(set(channels_)), dtype=np.int32)
             if np.all(channel_unique_array >= 0):
                 self._channels = np.array(channel_unique_array, dtype=np.uint32)
+                self._channels.setflags(write=False)
             else:
                 raise ValueError("'channels' must be a vector of non-negative integers")
 

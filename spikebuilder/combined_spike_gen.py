@@ -1,6 +1,6 @@
 from . import BaseSpikeBuilder
 from genericbuilder.propdecorators import *
-from genericbuilder.tools import get_unsettable
+from genericbuilder.tools import get_unsettable, ImmutableDict
 
 import numpy as np
 
@@ -105,12 +105,11 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
     @property
     @requires_preprocessed
     def spike_builders(self):
-        new_dict = {}
-        for key, val in self._spike_builders.items():
-            new_dict[key] = val.frozen_view()
+
+        return_dict = dict(self._spike_builders)
         for key, val in self._spike_builders_name_map.items():
-            new_dict[key] = self._spike_builders[val].frozen_view()
-        return new_dict
+            return_dict[key] = self._spike_builders[val]
+        return ImmutableDict(return_dict)
     
     steps_per_ms = get_unsettable(BaseSpikeBuilder, 'steps_per_ms')
     channels = get_unsettable(BaseSpikeBuilder, 'channels')
@@ -145,8 +144,8 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         passing None to update_spike_builder does nothing
         """
         if spike_builder_list is None:
-            self._init_attr('_spike_builders', {})
-            self._init_attr('_spike_builders_name_map', {})
+            self._init_attr('_spike_builders', ImmutableDict({}))
+            self._init_attr('_spike_builders_name_map', ImmutableDict({}))
             self._init_attr('_last_count', 0)
             return []
 
@@ -204,9 +203,13 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         assert isinstance(name, str) or name is None
         if get_builder_type(spike_builder_) == 'spike':
             if not spike_builder_.is_frozen or spike_builder_.is_built:
-                self._spike_builders[self._last_count] = spike_builder_.copy()
+                sb_dict_copy = dict(self._spike_builders)
+                sb_name_map_copy = dict(self._spike_builders_name_map)
+                sb_dict_copy[self._last_count] = spike_builder_.copy_immutable()
                 if name:
-                    self._spike_builders_name_map[name] = self._last_count
+                    sb_name_map_copy[name] = self._last_count
+                self._spike_builders = ImmutableDict(sb_dict_copy)
+                self._spike_builders_name_map = ImmutableDict(sb_name_map_copy)
             else:
                 raise ValueError(
                     "The spike builder is a frozen, unbuilt spike builder (possibly a frozen"
@@ -215,7 +218,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
             raise ValueError("The object being added is not a spike builder")
 
         self._last_count += 1
-        return (self._last_count-1, self._spike_builders[self._last_count-1].frozen_view())
+        return (self._last_count-1, self._spike_builders[self._last_count-1])
 
 
     @property_setter("spike_builders")
@@ -255,16 +258,21 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
         if get_builder_type(arg) == 'spike':
             if not arg.is_frozen or arg.is_built:
-                self._spike_builders[actual_uid] = arg.copy()
+                sb_dict_copy = dict(self._spike_builders)
+                sb_dict_copy[actual_uid] = arg.copy_immutable()
+                self._spike_builders = ImmutableDict(sb_dict_copy)
             else:
                 raise ValueError(
                     "The spikes builder is a frozen, unbuilt spike builder (possibly a frozen"
                     " view of an unbuilt builder), and can thus not be used to build spikes.")
         else:
-            self._spike_builders[actual_uid].set_properties(arg)
+            sb_dict_copy = dict(self._spike_builders)
+            sb_dict_copy[actual_uid] = sb_dict_copy[actual_uid].copy_mutable()
+            sb_dict_copy[actual_uid].set_properties(arg)
+            sb_dict_copy[actual_uid] = sb_dict_copy[actual_uid].copy_immutable()
+            self._spike_builders = ImmutableDict(sb_dict_copy)
 
-
-        return (actual_uid, self._spike_builders[actual_uid].frozen_view())
+        return (actual_uid, self._spike_builders[actual_uid])
 
 
     @property_setter("spike_builders")
@@ -282,11 +290,15 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         else:
             actual_uid = id_val
         
-        name_map_list = list(self._spike_builders_name_map.items())
+        name_map_list = self._spike_builders_name_map.items()
         name_map_list = [x for x in name_map_list if x[1] == actual_uid]
         for elem in name_map_list:
-            self._spike_builders_name_map.pop(x)
-        return_builder = self._spike_builders.pop(actual_uid)
+            sb_name_map_copy = dict(self._spike_builders_name_map)
+            sb_name_map_copy.pop(elem)
+            self._spike_builders_name_map = ImmutableDict(sb_name_map_copy)
+        sb_dict_copy = dict(self._spike_builders)
+        return_builder = sb_dict_copy.pop(actual_uid)
+        self._spike_builders = ImmutableDict(sb_dict_copy)
 
         return (actual_uid, return_builder)
 
@@ -305,8 +317,10 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         nchannels = self._channels.size
         channel_index_map = dict(zip(self._channels, range(nchannels)))
 
+        new_final_sb_list = []
         for builder in self._final_spike_builders_list:
-            builder.build()
+            new_final_sb_list.append(builder.copy_rebuilt())
+        self._final_spike_builders_list = new_final_sb_list
 
         spike_steps_appended = [[] for __ in self._channels]
         spike_weights_appended = [[] for __ in self._channels]

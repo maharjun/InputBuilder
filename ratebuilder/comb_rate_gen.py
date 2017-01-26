@@ -9,7 +9,7 @@ class CombinedRateBuilder(BaseRateBuilder):
     def __init__(self, conf_dict):
         # Initialization done directly as no None initializable property / function
         # corresponding to _rate_builders
-        self._rate_builders = []
+        self._rate_builders = ()
         super().__init__({})
 
         relevant_keys = ['rate_builders', 'transform', 'use_hist_eq']
@@ -70,27 +70,28 @@ class CombinedRateBuilder(BaseRateBuilder):
 
     @property
     def rate_builders(self):
-        return_rb_list = []
-        for rb in self._rate_builders:
-            return_rb_list.append(rb.frozen_view())
-        return return_rb_list
+        return self._rate_builders
         
     @property_setter('rate_builders')
     def add_rate_builders(self, rate_builder_array):
         if rate_builder_array is None:
             self._init_attr('_rate_builders', [])
         else:
+            new_rate_builders = []
             for rb in rate_builder_array:
                 if get_builder_type(rb) == 'rate':
-                    self._rate_builders.append(rb)
+                    new_rate_builders.append(rb.copy_immutable())
                 else:
                     raise TypeError("the rate_builder_array must contain only rate builder objects")
+            self._rate_builders = self._rate_builders + tuple(new_rate_builders)
     
 
     def _build(self):
         # First, we build all the rate builders
+        new_built_rbs = []
         for rb in self._rate_builders:
-            rb.build()
+            new_built_rbs.append(rb.copy_rebuilt())
+        self._rate_builders = tuple(new_built_rbs)
 
         nchannels = self._channels.size
         # Then, for each rate, builder we extend the first dimention to be equal to the number of channels with 0 as the output wherever there is no channel. If it is a zero dimensional array, we simply let it be

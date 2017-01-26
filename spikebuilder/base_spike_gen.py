@@ -127,6 +127,7 @@ class BaseSpikeBuilder(BaseGenericBuilder):
             channel_unique_array = np.array(sorted(set(channels_)), dtype=np.int32)
             if np.all(channel_unique_array >= 0):
                 self._channels = np.array(channel_unique_array, dtype=np.uint32)
+                self._channels.setflags(write=False)
             else:
                 raise ValueError("'channels' should be integers >= 0")
 
