@@ -38,7 +38,6 @@ class CombinedRateBuilder(BaseRateBuilder):
     steps_per_ms = get_unsettable(BaseRateBuilder, 'steps_per_ms')
 
     @BaseRateBuilder.time_length.setter
-    @requires_rebuild
     def time_length(self, time_length_):
         if time_length_ is None:
             super().with_time_length(None)
@@ -51,7 +50,6 @@ class CombinedRateBuilder(BaseRateBuilder):
         return self._transform
 
     @transform.setter
-    @requires_rebuild
     def transform(self, transform_):
         if transform_ is None:
             self._init_attr('_transform', combine_sum)
@@ -64,7 +62,6 @@ class CombinedRateBuilder(BaseRateBuilder):
         return self._use_hist_eq
 
     @use_hist_eq.setter
-    @requires_rebuild
     def use_hist_eq(self, use_hist_eq_):
         self._use_hist_eq = bool(use_hist_eq_)
 

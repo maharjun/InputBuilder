@@ -110,7 +110,6 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
 
     
     @CombinedSpikeBuilder.time_length.setter
-    @requires_rebuild
     def time_length(self, time_length_):
         if time_length_ is None:
             super().with_time_length(None)
@@ -122,7 +121,6 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
             self._is_time_length_assigned = True
 
     @property_setter('repeat_instances')
-    @requires_rebuild
     def add_repeat_instance(self, start_time, sb_id_val):
         """
         This function adds a repeat instance of the spike builder refereced by
@@ -143,7 +141,6 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
             raise KeyError("The repeat instance {} is already contained in the spike builder".format(new_ri))
 
     @property_setter('repeat_instances')
-    @requires_rebuild
     def pop_repeat_instance(self, start_time=None, sb_id_val=None):
         """
         This function removes a single spike generator specified by either the
@@ -175,7 +172,6 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
                 raise KeyError("The required repeat instance was not found")
 
     @property_setter('repeat_instances')
-    @requires_rebuild
     def clear_repeat_instances(self):
         self._repeat_instances_set = frozenset()
 

@@ -118,7 +118,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         return self._mean
 
     @mean.setter
-    @requires_rebuild
     def mean(self, mean_):
         self._mean = np.float_(mean_)
     
@@ -128,7 +127,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         return self._sigma
 
     @sigma.setter
-    @requires_rebuild
     def sigma(self, sigma_):
         if sigma_ > 0:
             self._sigma = np.float_(sigma_)
@@ -141,7 +139,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         return self._theta
 
     @theta.setter
-    @requires_rebuild
     def theta(self, theta_):
         if self._steps_per_ms > theta_ > 0:
             self._theta = np.float_(theta_)
@@ -154,7 +151,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         return self._delay
 
     @delay.setter
-    @requires_rebuild
     def delay(self, delay_):
         if delay_ > 0:
             self._delay = np.uint32(delay_ + 0.5)
@@ -167,7 +163,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         return self._max_rate
 
     @max_rate.setter
-    @requires_rebuild
     def max_rate(self, max_rate_):
         if max_rate_ > 0:
             self._max_rate = np.float_(max_rate_)
@@ -180,6 +175,5 @@ class LegacyRateBuilder(BaseRateBuilder):
         return self._rng
 
     @rng.setter
-    @requires_rebuild
     def rng(self, rng_):
         self._rng = rng_

@@ -67,7 +67,6 @@ class BaseRateBuilder(BaseGenericBuilder):
         return self._steps_per_ms
 
     @steps_per_ms.setter
-    @requires_rebuild
     def steps_per_ms(self, steps_per_ms_):
         if steps_per_ms_ is None:
             self._init_attr('_steps_per_ms', np.uint32(1))
@@ -93,7 +92,6 @@ class BaseRateBuilder(BaseGenericBuilder):
         return self._time_length
 
     @time_length.setter
-    @requires_rebuild
     def time_length(self, time_length_):
         if time_length_ is None:
             self._init_attr('_time_length', np.float64(0))
@@ -115,7 +113,6 @@ class BaseRateBuilder(BaseGenericBuilder):
         return channels_view
 
     @channels.setter
-    @requires_rebuild
     def channels(self, channels_):
         # Assuming 1D iterable
         if channels_ is None:

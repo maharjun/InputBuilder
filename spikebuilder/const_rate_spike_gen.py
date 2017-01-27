@@ -1,5 +1,4 @@
 from . import BaseSpikeBuilder
-from genericbuilder.propdecorators import requires_rebuild
 
 from numpy.random import mtrand as mt
 import numpy as np
@@ -21,7 +20,6 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
         return self._rate
 
     @rate.setter
-    @requires_rebuild
     def rate(self, rate_val):
         if rate_val is None:
             self._init_attr('_rate', 0.0)

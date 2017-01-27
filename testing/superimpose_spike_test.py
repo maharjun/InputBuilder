@@ -75,6 +75,8 @@ def main():
         print(E)
         combined_spike_builder.modify_spike_builder('pat3', spike_pattern3)
         ou_rate_builder.steps_per_ms = 1
+    except Exception as E:
+        raise
     else:
         raise Exception("The combined spike builder processed an inconsistent stepsize")
 

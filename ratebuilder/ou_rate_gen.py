@@ -87,7 +87,6 @@ class OURateBuilder(BaseRateBuilder):
         return self._mean
 
     @mean.setter
-    @requires_rebuild
     def mean(self, mean_):
         self._mean = np.float_(mean_)
 
@@ -97,7 +96,6 @@ class OURateBuilder(BaseRateBuilder):
         return self._sigma
 
     @sigma.setter
-    @requires_rebuild
     def sigma(self, sigma_):
         if sigma_ > 0:
             self._sigma = np.float_(sigma_)
@@ -110,7 +108,6 @@ class OURateBuilder(BaseRateBuilder):
         return self._theta
 
     @theta.setter
-    @requires_rebuild
     def theta(self, theta_):
         if theta_ > 0:
             self._theta = np.float_(theta_)
@@ -123,7 +120,6 @@ class OURateBuilder(BaseRateBuilder):
         return self._rng
 
     @rng.setter
-    @requires_rebuild
     def rng(self, rng_):
         # No special type checks here. random generator is considered
         # used enough to bring out any type errors quickly enough

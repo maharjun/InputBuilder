@@ -184,7 +184,6 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         return retval
 
     @property_setter("spike_builders")
-    @requires_rebuild
     def add_spike_builder(self, spike_builder_, name=None):
         """
         Add specified spike builder to set of contained spike builders.
@@ -222,7 +221,6 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
 
     @property_setter("spike_builders")
-    @requires_rebuild
     def modify_spike_builder(self, id_val, arg):
         """
         modifies the contained spike builder corresponding to the name `name`.
