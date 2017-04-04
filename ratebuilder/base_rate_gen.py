@@ -10,7 +10,7 @@ class BaseRateBuilder(BaseGenericBuilder):
 
     builder_type = 'rate' 
 
-    def __init__(self, conf_dict=None):
+    def __init__(self, conf_dict={}):
         """Constructor for BaseRateGenerator
         The constructor takes one argument either named copy_object or conf_dict.
 
@@ -28,9 +28,6 @@ class BaseRateBuilder(BaseGenericBuilder):
         """
         super().__init__(conf_dict)
         
-        if conf_dict is None:
-            conf_dict = {}
-
         # Default initialization
         # Initialization for internal parameters
         self.time_length = None

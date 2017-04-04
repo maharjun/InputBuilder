@@ -1,6 +1,6 @@
 from . import BaseSpikeBuilder
 
-from numpy.random import mtrand as mt
+from numpy.random.mtrand import _rand as mt
 import numpy as np
 
 class ConstRateSpikeBuilder(BaseSpikeBuilder):
@@ -43,7 +43,7 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
     def _build(self):
         super()._build()
         nchannels = self._channels.size
-        spike_weight_array = mt.poisson(lam=self._rate/(1000*self._steps_per_ms),
+        spike_weight_array = self._rng.poisson(lam=self._rate/(1000*self._steps_per_ms),
                                         size=(nchannels, self._steps_length)).astype(np.uint32)
         self._spike_rel_step_array = np.array(
             [np.argwhere(spike_weight_array[i,:])[:,0].astype(np.uint32) for i in range(nchannels)],

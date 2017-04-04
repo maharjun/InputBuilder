@@ -50,9 +50,8 @@ def main():
         spike_pattern2.rate_builder.rate_array + spike_pattern3.rate_builder.rate_array,
         spike_pattern4.rate_builder.rate_array))
 
-    base_rate = combined_spike_builder.spike_builders['pat1'].rate_builder.get_properties()['mean']
-    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array, base_rate)
-    analyse_exponential_distrib(TotalIATVector, expected_mean=1/base_rate)
+    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array)
+    analyse_exponential_distrib(TotalIATVector)
 
     # Try to change the channels of spike_pattern3. catch error and confirm
     try:
@@ -96,8 +95,8 @@ def main():
 
     # Analyse the spikes. If it works it means that comibining sifferent channel
     # and start time change works fine
-    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array, base_rate)
-    analyse_exponential_distrib(TotalIATVector, expected_mean=1/base_rate)
+    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array)
+    analyse_exponential_distrib(TotalIATVector)
 
     # Confirm Start time change by checking the start time change in each of the contained generators
     new_start_times = set(int(gen.start_time+0.5) for gen in combined_spike_builder.spike_builders.values())

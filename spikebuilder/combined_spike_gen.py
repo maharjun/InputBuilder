@@ -1,6 +1,7 @@
 from . import BaseSpikeBuilder
 from genericbuilder.propdecorators import *
 from genericbuilder.tools import get_unsettable, ImmutableDict
+from timeit import default_timer as timer
 
 import numpy as np
 
@@ -75,7 +76,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
     """
 
-    def __init__(self, conf_dict=None):
+    def __init__(self, conf_dict={}):
         # self._final_spike_builders_list = [] [Must be set in preprocess of derived class]
 
         # Filtering Input Dict
@@ -265,9 +266,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
                     " view of an unbuilt builder), and can thus not be used to build spikes.")
         else:
             sb_dict_copy = dict(self._spike_builders)
-            sb_dict_copy[actual_uid] = sb_dict_copy[actual_uid].copy_mutable()
-            sb_dict_copy[actual_uid].set_properties(arg)
-            sb_dict_copy[actual_uid] = sb_dict_copy[actual_uid].copy_immutable()
+            sb_dict_copy[actual_uid] = sb_dict_copy[actual_uid].copy_with(arg)
             self._spike_builders = ImmutableDict(sb_dict_copy)
 
         return (actual_uid, self._spike_builders[actual_uid])
@@ -315,11 +314,14 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         nchannels = self._channels.size
         channel_index_map = dict(zip(self._channels, range(nchannels)))
 
+        time_build_start = timer()
         new_final_sb_list = []
         for builder in self._final_spike_builders_list:
             new_final_sb_list.append(builder.copy_rebuilt())
         self._final_spike_builders_list = new_final_sb_list
+        time_build_end = timer()
 
+        time_join_start = timer()
         spike_steps_appended = [[] for __ in self._channels]
         spike_weights_appended = [[] for __ in self._channels]
         for builder in self._final_spike_builders_list:
@@ -347,3 +349,8 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
         self._spike_rel_step_array = np.array(spike_steps_appended)
         self._spike_weight_array   = np.array(spike_weights_appended, dtype=object)
+        time_join_end = timer()
+
+        print("Building Time: {} Joining Time: {}".format(time_build_end - time_build_start,
+                                                          time_join_end - time_join_start))
+        # import ipdb; ipdb.set_trace()

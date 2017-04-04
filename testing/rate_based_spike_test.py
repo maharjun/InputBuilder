@@ -33,10 +33,9 @@ def main():
     print("Time taken = {:<10.5f} seconds".format(after-before))
 
     rate_seq = spike_gen._transform(spike_gen.rate_builder.rate_array[0, :])
-    nspike_seq = np.zeros(spike_gen.steps_length)
+    nspike_seq = np.zeros(spike_gen.steps_length, dtype=np.uint32)
     nonzero_spike_inds = spike_gen.spike_step_array[0]
     nspike_seq[nonzero_spike_inds] = spike_gen.spike_weight_array[0]
-    nspike_seq = nspike_seq.astype(np.int32)
 
     IAT_seq = convert_poisson_seq_to_IAT(rate_seq,
                                          spike_gen.steps_per_ms,

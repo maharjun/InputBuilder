@@ -49,7 +49,7 @@ class SuperimposeSpikeBuilder(CombinedSpikeBuilder):
       This specifies the start_time property
     """
 
-    def __init__(self, conf_dict=None):
+    def __init__(self, conf_dict={}):
         conf_dict = {key:conf_dict.get(key) for key in ['spike_builders', 'start_time']}
         super().__init__(conf_dict)
 

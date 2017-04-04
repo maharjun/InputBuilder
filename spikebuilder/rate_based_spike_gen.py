@@ -1,7 +1,7 @@
 __author__ = 'Arjun'
 
 import numpy as np
-from numpy.random import mtrand as mt
+from numpy.random.mtrand import _rand as mt
 
 from . import BaseSpikeBuilder
 from ratebuilder import BaseRateBuilder
@@ -71,7 +71,7 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
     """
 
 
-    def __init__(self, conf_dict=None):
+    def __init__(self, conf_dict={}):
 
         # default init of super and current class
         super().__init__({})

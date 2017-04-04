@@ -62,9 +62,8 @@ def main():
         spike_pattern2.rate_builder.rate_array,
         spike_pattern1.rate_builder.rate_array))
 
-    base_rate = combined_spike_builder.spike_builders['pat1'].rate_builder.get_properties()['mean']
-    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array, base_rate)
-    analyse_exponential_distrib(TotalIATVector, expected_mean=1/base_rate)
+    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array)
+    analyse_exponential_distrib(TotalIATVector)
 
     # Now adding fillers.
     combined_spike_builder.clear_repeat_instances()
@@ -80,13 +79,13 @@ def main():
     combined_spike_builder.build()
     combined_rate_array = np.hstack((
         spike_pattern1.rate_builder.rate_array,
-        filler_spike_builder.rate*np.ones((spike_pattern1.channels.size, 20000*steps_per_ms)),
+        (filler_spike_builder.rate+5)*np.ones((spike_pattern1.channels.size, 20000*steps_per_ms)),
         spike_pattern2.rate_builder.rate_array,
         filler_spike_builder.rate*np.ones((spike_pattern1.channels.size, 20000*steps_per_ms)),
         spike_pattern1.rate_builder.rate_array))
 
-    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array, base_rate)
-    analyse_exponential_distrib(TotalIATVector, expected_mean=1/base_rate)
+    TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array)
+    analyse_exponential_distrib(TotalIATVector)
 
 
 

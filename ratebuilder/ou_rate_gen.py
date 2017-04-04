@@ -4,7 +4,7 @@ from . import BaseRateBuilder
 from genericbuilder.propdecorators import *
 
 import numpy as np
-from numpy.random import mtrand as mt
+from numpy.random.mtrand import _rand as mt
 import scipy.signal as sg
 from collections import namedtuple
 

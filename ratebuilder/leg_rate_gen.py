@@ -1,10 +1,8 @@
 from . import BaseRateBuilder
-from genericbuilder.propdecorators import *
-
 
 import numpy as np
-from numpy.random import mtrand as mt
-
+from numpy.random.mtrand import _rand as mt
+from numba import jit
 
 class LegacyRateBuilder(BaseRateBuilder):
     """
@@ -93,6 +91,18 @@ class LegacyRateBuilder(BaseRateBuilder):
         self.max_rate = config_dict.get('max_rate') or 50.0
         self.rng = config_dict.get('rng') or mt
 
+    @staticmethod
+    @jit(nopython=True, cache=True)
+    def _fast_build(std_normal_array, sigma, mean, theta, steps_per_ms, log_max_rate):
+        x = np.zeros_like(std_normal_array, np.float64)
+        x[:, 0] = mean + std_normal_array[:,0]
+        sim_length = std_normal_array.shape[1]
+        for i in range(sim_length-1):
+            x[:, i+1] = x[:, i] + (theta*(mean - x[:, i]) + std_normal_array[:,i+1]*sigma)/steps_per_ms
+            x[x[:, i+1] > log_max_rate, i+1] = log_max_rate
+
+        return x
+
     def _build(self):
         nchannels = self._channels.size
         simlength = self._delay + self._steps_length
@@ -102,14 +112,14 @@ class LegacyRateBuilder(BaseRateBuilder):
         mean = self._mean
         sigma = self._sigma
         log_max_rate = np.log(self._max_rate)
+        std_normal_array = self._rng.normal(size=sim_array_size)
 
-        x = np.zeros(sim_array_size, dtype=np.float64)
-        x[:, 0] = self._mean + mt.normal(size=nchannels)
-        for i in range(simlength-1):
-            x[:, i+1] = x[:, i] + (theta*(mean - x[:, i]) \
-                                   + self._rng.normal(scale=sigma, size=nchannels))/self._steps_per_ms
-            x[x[:, i+1] > log_max_rate, i+1] = log_max_rate
-
+        x = LegacyRateBuilder._fast_build(std_normal_array=std_normal_array,
+                                          sigma=sigma,
+                                          mean=mean,
+                                          theta=theta,
+                                          steps_per_ms=self._steps_per_ms,
+                                          log_max_rate=log_max_rate)
         self._rate_array = np.exp(x[:, self._delay:])
 
 

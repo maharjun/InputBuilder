@@ -47,7 +47,7 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
 
         super().__init__({})
         self._repeat_instances_set = frozenset()
-        self._repeat_instances_sorted = []  # derived from 
+        self._repeat_instances_sorted = ()  # derived from 
         self.time_length = None
 
         conf_dict_base = {key:conf_dict.get(key) for key in ['spike_builders', 'start_time']}
@@ -72,15 +72,14 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
             assert is_within_time_bounds, "The specified repeats are not within the time bounds"
 
     def _preprocess(self):
-        
+
         # Adding Actual Spike Builders 
-        self._repeat_instances_sorted = sorted(self._repeat_instances_set)
-        actual_spike_builders_list = [self._spike_builders[sb_uid].copy_mutable()
-                                                                  .with_start_time(sb_st)
-                                                                  .copy_immutable()
+        self._repeat_instances_sorted = tuple(sorted(self._repeat_instances_set))
+        actual_spike_builders_list = [self._spike_builders[sb_uid].copy_with_start_time(sb_st)
                                       for sb_st, sb_uid in self._repeat_instances_sorted]
         
-        # Adding Filler Spike Builders if present
+        # Adding Filler Spike Builders if present. Takes care of the case of adding a filler
+        # at the end
         filler_spike_builders_list = []
         if 'filler' in self._spike_builders_name_map:
             filler_uid = self._spike_builders_name_map['filler']
@@ -89,19 +88,25 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
             filler_start_end_times = [(all_start_end_times[i][1], all_start_end_times[i+1][0])
                                       for i in range (len(self._repeat_instances_sorted)-1)]
 
+            # If time length is assigned then append final filler period. 
+            if self._is_time_length_assigned:
+                filler_start_end_times.append((all_start_end_times[-1][1], self._time_length))
+
             filler_sb = self._spike_builders[filler_uid]
             filler_spike_builders_list = [
-                filler_sb.copy_mutable().with_start_time(fill_beg)
-                                        .with_time_length(fill_end - fill_beg)
-                                        .copy_immutable()
+                filler_sb.copy_with({'start_time': fill_beg,
+                                     'time_length': fill_end - fill_beg})
                 for fill_beg, fill_end in filler_start_end_times]
 
         self._final_spike_builders_list = actual_spike_builders_list + filler_spike_builders_list
         
         # If the time length is not manually assigned, infer it from the spike builders
         if not self._is_time_length_assigned:
-            time_length = max(sb_st + self._spike_builders[sb_uid].time_length
-                              for sb_st, sb_uid in self._repeat_instances_set)
+            if len(self._repeat_instances_sorted):
+                time_length = max(sb_st + self._spike_builders[sb_uid].time_length
+                                  for sb_st, sb_uid in self._repeat_instances_set)
+            else:
+                time_length = 0
             super().with_time_length(time_length)
         super()._preprocess()
 
@@ -119,6 +124,11 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
         else:
             super().with_time_length(time_length_)
             self._is_time_length_assigned = True
+
+    @property
+    @requires_preprocessed
+    def repeat_instances(self):
+        return self._repeat_instances_sorted
 
     @property_setter('repeat_instances')
     def add_repeat_instance(self, start_time, sb_id_val):
@@ -174,43 +184,3 @@ class RepeaterSpikeBuilder(CombinedSpikeBuilder):
     @property_setter('repeat_instances')
     def clear_repeat_instances(self):
         self._repeat_instances_set = frozenset()
-
-    LegacyPatternInfo = namedtuple('LegacyPatternInfo', ['spike_times',
-                                                         'pattern_ind_t',
-                                                         'pattern_seq',
-                                                         'pattern_ind_p',
-                                                         'pattern_start_p',
-                                                         'pattern_length_p'])
-
-    @requires_built
-    def get_legacy_struct(self):
-        """
-        This returns the legacy tuple for use with christophs code. only in this case
-        it is a named_tuple which has backward compatibility with the plain tuple
-        """
-        LegacyPatternInfo = RepeaterSpikeBuilder.LegacyPatternInfo
-        spike_times = self.spike_time_array
-        pattern_ind_t = -1*np.ones(self.steps_length)
-        pattern_ind_p = np.zeros(len(self._repeat_instances_sorted))
-        pattern_start_p = np.zeros(len(self._repeat_instances_sorted))
-        pattern_length_p = np.zeros(len(self._repeat_instances_sorted))
-
-        for i in range(len(_repeat_instances_sorted)):
-            ri_entry = _repeat_instances_sorted[i]
-            sb = self._spike_builders[ri_entry[1]]
-            steps_per_ms = sb.steps_per_ms
-            sb_start_time_step = int(ri_entry[0]*steps_per_ms + 0.5)
-            sb_end_time_step = sb_start_time_step + sb.steps_length
-
-            pattern_ind_t[sb_start_time_step:sb_end_time_step] = ri_entry[1]
-            pattern_ind_p[i] = ri_entry[1]
-            pattern_start_p[i] = (self._start_time_step + sb_start_time_step)/steps_per_ms
-            pattern_length_p[i] = sb.time_length
-
-        return LegacyPatternInfo(
-            spike_times=spike_times,
-            pattern_ind_t=pattern_ind_t,
-            pattern_seq=None,
-            pattern_ind_p=pattern_ind_p,
-            pattern_start_p=pattern_start_p,
-            pattern_length_p=pattern_length_p)

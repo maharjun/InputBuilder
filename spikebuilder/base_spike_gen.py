@@ -1,7 +1,6 @@
 __author__ = 'Arjun'
 
 import numpy as np
-from numpy.random import mtrand as mt
 
 from genericbuilder.baseclass import BaseGenericBuilder
 from genericbuilder.propdecorators import *
@@ -40,7 +39,7 @@ class BaseSpikeBuilder(BaseGenericBuilder):
 
     builder_type = 'spike'
 
-    def __init__(self, conf_dict=None):
+    def __init__(self, conf_dict={}):
 
         super().__init__(conf_dict)
 
@@ -186,7 +185,7 @@ class BaseSpikeBuilder(BaseGenericBuilder):
     @cached('spike_time_array')
     @requires_built
     def spike_time_array(self):
-        ret = np.ndarray(self._spike_time_array.shape, dtype=object)
+        ret = np.ndarray(self._spike_rel_step_array.shape, dtype=object)
         for i in range(ret.size):
             ret[i] = (self._spike_rel_step_array[i] + self._start_time_step)/self._steps_per_ms
             ret[i].setflags(write=False)
