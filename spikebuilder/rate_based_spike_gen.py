@@ -1,11 +1,14 @@
 __author__ = 'Arjun'
 
 import numpy as np
-from numpy.random.mtrand import _rand as mt
+from numpy.random import mtrand
 
 from . import BaseSpikeBuilder
 from ratebuilder import BaseRateBuilder
 from genericbuilder.tools import get_builder_type
+from genericbuilder.propdecorators import requires_built
+
+mtgen = mtrand.binomial.__self__
 
 class RateBasedSpikeBuilder(BaseSpikeBuilder):
     """
@@ -23,14 +26,14 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         *************************
         
         *rate_builder*
-          The rate builder from which the spike pattern is generated.
-          Note that all other information of the spike pattern, namely steps_per_ms,
-          time_length, and channels are inferred from the rate generator
+          The rate builder from which the spike pattern is generated. Note that all
+          other information of the spike pattern, namely steps_per_ms, time_length, and
+          channels are inferred from the rate generator
         
         *transform*
           This is a function that takes the rate_array returned by the rate builder,
-          and returns the transformed rate array to be used for generating spikes.
-          If unspecified or None, DEFAULTS TO identity transformation function np.copy()
+          and returns the transformed rate array to be used for generating spikes. If
+          unspecified or None, DEFAULTS TO identity transformation function np.copy()
 
         *start_time*
           Start time for the Spike Pattern. Default: dt
@@ -53,48 +56,42 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
           frozen, then an exception is thrown by it.
 
         *channels*
-          This is derived from the channels of the rate generator. When set, it
-          affects the channels of the rate generator. If the rate generator is
-          frozen, then an exception is thrown by it.
+          This is derived from the channels of the rate generator. When set, it affects
+          the channels of the rate generator. If the rate generator is frozen, then an
+          exception is thrown by it.
 
         *rate_builder*
-          The rate builder from which the spike pattern is generated.
-          Note that all other information of the spike pattern, namely steps_per_ms,
-          time_length, and channels are inferred from the rate generator
+          The rate builder from which the spike pattern is generated. Note that all
+          other information of the spike pattern, namely steps_per_ms, time_length, and
+          channels are inferred from the rate generator
         
         *transform*
           This is a function that takes the rate_array returned by the rate builder,
-          and returns the transformed rate array to be used for generating spikes.
-          If unspecified or None, DEFAULTS TO identity transformation function np.copy()
+          and returns the transformed rate array to be used for generating spikes. If
+          unspecified or None, DEFAULTS TO identity transformation function np.copy()
 
         Other properties are documented in BaseSpikeBuilder
     """
 
 
-    def __init__(self, conf_dict={}):
+    def __init__(self, rate_builder, transform=np.copy, rng=mtgen):
 
         # default init of super and current class
-        super().__init__({})
-        self.rate_builder = None
-        self.transform = None
-        self.rng = None
+        super().__init__()  # only purpose is to run BaseGenericBuilder init
 
-        relevant_props = {'rate_builder', 'transform', 'start_time', 'rng'}
-        conf_dict = {key:conf_dict.get(key) for key in relevant_props}
-        super().__init__(conf_dict)
+        # Initializing Data members in case corresponding properties are not specified
         
-        self.rate_builder = conf_dict.get('rate_builder')
-        self.transform = conf_dict.get('transform')
-        self.rng = conf_dict.get('rng')
-        
+        # Assigning properties from arguments
+        self.rate_builder = rate_builder
+        self.transform = transform
+        self.rng = rng        
 
     def _preprocess(self):
-        super().with_steps_per_ms(self._rate_builder.steps_per_ms)
-        super().with_time_length(self._rate_builder.time_length) 
-        super().with_channels(self._rate_builder.channels)
+        # No preprocessing required for this class
+        pass
 
-        super()._preprocess()
-
+    def _validate(self):
+        pass
 
     @property
     def rate_builder(self):
@@ -107,27 +104,17 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
         **SET**:
           Takes any of the following as arguments:
 
-          1. A dict specifying the relevent properties of the rate
-             generator to update.
-          2. An instance of BaseRateBuilder
+          1. An instance of BaseRateBuilder
         """
-        return self._rate_builder.copy_immutable()
+        return self._rate_builder  # Note that _rate_builder is immutable
 
 
     @rate_builder.setter
-    def rate_builder(self, arg):
-        if arg is None:
-            self._init_attr('_rate_builder', BaseRateBuilder())
+    def rate_builder(self, rate_builder_):
+        if get_builder_type(rate_builder_) == 'rate':
+            self._rate_builder = rate_builder_.copy().set_immutable()
         else:
-            if get_builder_type(arg) == 'rate':
-                if not arg.is_frozen or arg.is_built:
-                    self._rate_builder = arg.copy_immutable()
-                else:
-                    raise ValueError(
-                        "The rate generator is a frozen, unbuilt rate generator (possible a frozen"
-                        " view of an unbuilt generator), and can thus not be used to generate spikes.")
-            else:
-                self._rate_builder.set_properties(arg)
+            raise TypeError("'rate_builder_' must be an instance of BaseRateBuilder")
 
     @property
     def transform(self):
@@ -135,10 +122,7 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
     @transform.setter
     def transform(self, transform_func_):
-        if transform_func_ is None:
-            self._init_attr('_transform', np.copy)
-        else:
-            self._transform = transform_func_
+        self._transform = transform_func_
 
 
     @property
@@ -147,53 +131,79 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
     
     @rng.setter
     def rng(self, rng_):
-        if rng_ is None:
-            self._init_attr('_rng', mt)
-        else:
-            self._rng = rng_
+        self._rng = rng_
 
 
     # Overriding Base Property Setters
-    @BaseSpikeBuilder.steps_per_ms.setter
+    @property
+    def steps_per_ms(self):
+        return self._rate_builder.steps_per_ms
+
+    @steps_per_ms.setter
     def steps_per_ms(self, steps_per_ms_):
-        if steps_per_ms_ is None:
-            super().with_steps_per_ms(None)
-        else:
-            self._rate_builder = self._rate_builder.copy_mutable()
-            self._rate_builder.steps_per_ms = steps_per_ms_
-            self._rate_builder = self._rate_builder.copy_immutable()
+        self._rate_builder = self._rate_builder.copy_mutable()
+        self._rate_builder.steps_per_ms = steps_per_ms_
+        self._rate_builder = self._rate_builder.set_immutable()
 
-    @BaseSpikeBuilder.time_length.setter
+
+    @property
+    def time_length(self):
+        return self._rate_builder.time_length
+
+    @time_length.setter
     def time_length(self, time_length_):
-        if time_length_ is None:
-            super().with_time_length(None)
-        else:
-            self._rate_builder = self._rate_builder.copy_mutable()
-            self._rate_builder.time_length = time_length_
-            self._rate_builder = self._rate_builder.copy_immutable()
+        self._rate_builder = self._rate_builder.copy_mutable()
+        self._rate_builder.time_length = time_length_
+        self._rate_builder = self._rate_builder.set_immutable()
 
-    @BaseSpikeBuilder.channels.setter
+
+    @property
+    def channels(self):
+        return self._rate_builder.channels
+
+    @channels.setter
     def channels(self, channels_):
-        if channels_ is None:
-            super().with_channels(None)
-        else:
-            self._rate_builder = self._rate_builder.copy_mutable()
-            self._rate_builder.channels = channels_
-            self._rate_builder = self._rate_builder.copy_immutable()
+        self._rate_builder = self._rate_builder.copy_mutable()
+        self._rate_builder.channels = channels_
+        self._rate_builder = self._rate_builder.set_immutable()
+
+    @property
+    @requires_built
+    def spike_rel_step_array(self):
+        """
+        Property that returns the relative spike step array.
+
+        :returns: an array of arrays A such that::
+            
+              A[i][j] = TIME STEP of the jth spike of the ith neuron relative to the
+                        beginning of the spike pattern
+        """
+        return self._spike_rel_step_array
+
+    @property
+    @requires_built
+    def spike_weight_array(self):
+        """
+        Property that returns the spike weight array.
+
+        :returns: an array of arrays A such that::
+            
+              A[i][j] = WEIGHT of the jth spike of the ith neuron
+        """
+        return self._spike_weight_array
 
     def _build(self):
 
         super()._build()
-        self._rate_builder = self._rate_builder.copy_rebuilt()
+        self._rate_builder = self._rate_builder.build_copy()
 
-        nchannels = self._channels.size
-        array_shape = (nchannels, self._steps_length)
+        nchannels = self.channels.size
+        array_shape = (nchannels, self.steps_length)
         poisson_distrib_spikes_from_rate = self._rng.poisson(
-            lam=self._transform(self._rate_builder.rate_array)/(1000*self._steps_per_ms),
+            lam=self._transform(self._rate_builder.rate_array)/(1000*self.steps_per_ms),
             size=array_shape)
 
         self._spike_rel_step_array = np.ndarray((nchannels,), dtype=object)
-        self._spike_time_array = np.ndarray((nchannels,), dtype=object)
         self._spike_weight_array = np.ndarray((nchannels,), dtype=object)
         
         for i in range(nchannels):
@@ -201,4 +211,7 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
             self._spike_rel_step_array[i] = non_zero_spike_inds.astype(np.uint32)
             self._spike_weight_array[i] = poisson_distrib_spikes_from_rate[i, non_zero_spike_inds].astype(np.uint32)
             assert self._spike_rel_step_array[i].shape == self._spike_weight_array[i].shape
+
+        self._spike_rel_step_array.setflags(write=False)
+        self._spike_weight_array.setflags(write=False)
         

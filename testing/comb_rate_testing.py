@@ -7,8 +7,6 @@ with ipdb.launch_ipdb_on_exception():
     from ratebuilder import LegacyRateBuilder
     from ratebuilder.comb_rate_gen import combine_sigmoid
 
-from itertools import chain
-
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -32,21 +30,24 @@ def test1():
         'time_length': time_length
     }
 
-    ou_rate_bldr1 = OURateBuilder(dict(sim_params, 
+    ou_rate_bldr1 = OURateBuilder(**dict(sim_params, 
         mean=20,
         sigma=2,
         theta=1))
-    ou_rate_bldr2 = OURateBuilder(dict(sim_params, 
+    ou_rate_bldr2 = OURateBuilder(**dict(sim_params, 
         mean=30,
         sigma=3,
         theta=1))
 
-    comb_rate_bldr = CombinedRateBuilder({'rate_builders': [ou_rate_bldr1, ou_rate_bldr2]})
-
+    comb_rate_bldr = CombinedRateBuilder(rate_builders=[ou_rate_bldr1, ou_rate_bldr2])
+    comb_rate_bldr.time_length = 10000
+    
     comb_rate_bldr.build()
     # Check if combination successful
 
-    assert np.all(comb_rate_bldr.rate_array == comb_rate_bldr.rate_builders[0].rate_array + comb_rate_bldr.rate_builders[1].rate_array), "The combination was unsuccessful"
+    assert np.all(comb_rate_bldr.rate_array == comb_rate_bldr.rate_builders[0].rate_array +
+                                               comb_rate_bldr.rate_builders[1].rate_array), \
+        "The combination was unsuccessful"
     print("The combination was successful")
 
 def test2():
@@ -60,8 +61,8 @@ def test2():
     """
 
     steps_per_ms = 1
-    channels = range(0, 20000)
-    time_length = 100
+    channels = range(0, 10)
+    time_length = 200000
 
     sim_params = {
         'steps_per_ms': steps_per_ms,
@@ -69,7 +70,7 @@ def test2():
         'time_length': time_length
     }
 
-    leg_builder1 = LegacyRateBuilder(dict(sim_params,
+    leg_builder1 = LegacyRateBuilder(**dict(sim_params,
         mean=np.log(3),
         sigma=0.5,
         theta=0.005,
@@ -77,9 +78,9 @@ def test2():
         max_rate=50))
     leg_builder2 = leg_builder1.copy()
 
-    comb_rate_bldr = CombinedRateBuilder({
-        'rate_builders':[leg_builder1, leg_builder2],
-        'transform': combine_sigmoid(K=5.0, M=0.5)})
+    comb_rate_bldr = CombinedRateBuilder(
+        rate_builders=[leg_builder1, leg_builder2],
+        transform=combine_sigmoid(K=5.0, M=0.5))
 
     comb_rate_bldr.build()
     comb_rate_hist_fig = plt.figure()

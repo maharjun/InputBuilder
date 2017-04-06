@@ -1,49 +1,40 @@
 from . import BaseRateBuilder
 from genericbuilder.propdecorators import *
-from genericbuilder.tools import get_builder_type, get_unsettable
+from genericbuilder.tools import get_builder_type
 
+from .combination_funcs import *
 import numpy as np
 
 class CombinedRateBuilder(BaseRateBuilder):
 
-    def __init__(self, conf_dict):
+    built_properties = ['rate_array']
+
+    def __init__(self, rate_builders=(), transform=combine_sum, use_hist_eq=False,
+                       channels=[], steps_per_ms=1, time_length=0):
         # Initialization done directly as no None initializable property / function
         # corresponding to _rate_builders
         self._rate_builders = ()
-        super().__init__({})
+        super().__init__()  # only purpose is to run BaseGenericBuilder init
 
-        relevant_keys = ['rate_builders', 'transform', 'use_hist_eq']
-        conf_dict = {key:conf_dict.get(key) for key in relevant_keys}
-        self.add_rate_builders(conf_dict.get('rate_builders'))
-        self.transform = conf_dict.get('transform') or combine_sum
-        self.use_hist_eq = conf_dict.get('use_hist_eq') or False
+        self.add_rate_builders(rate_builders)
+        self.transform = transform
+        self.use_hist_eq = use_hist_eq
 
     def _preprocess(self):
         # Calculate dependent variables
         if self._rate_builders:
-            super().with_steps_per_ms(self._rate_builders[0].steps_per_ms)
-            combined_channels = set.union(*[set(rb.channels) for rb in self._rate_builders])
-            super().with_channels(combined_channels)
-            super().with_time_length(self._rate_builders[0].time_length)
-        super()._preprocess()
+            self._steps_per_ms = self._rate_builders[0].steps_per_ms
+            combined_channels = sorted(set.union(*[set(rb.channels) for rb in self._rate_builders]))
+            self._channels = np.array(combined_channels, dtype=np.uint32())
+            self._channels.setflags(write=False)
 
     def _validate(self):
-        has_common_time_length = len(set(rb.time_len_in_steps for rb in self._rate_builders)) <= 1
+        step_length_set = set(int(rb.time_length*rb.steps_per_ms+0.5) for rb in self._rate_builders)
+        has_common_time_length = len(step_length_set) <= 1
         assert has_common_time_length, "All constituent rate builders must have a common time length"
 
         has_common_steps_per_ms = len(set(rb.steps_per_ms for rb in self._rate_builders)) <= 1
         assert has_common_steps_per_ms, "All constituent rate builders must have a common step size"
-
-    channels = get_unsettable(BaseRateBuilder, 'channels')
-    steps_per_ms = get_unsettable(BaseRateBuilder, 'steps_per_ms')
-
-    @BaseRateBuilder.time_length.setter
-    def time_length(self, time_length_):
-        if time_length_ is None:
-            super().with_time_length(None)
-        else:
-            for rb in self._rate_builders:
-                rb.time_length = time_length_
 
     @property
     def transform(self):
@@ -69,7 +60,7 @@ class CombinedRateBuilder(BaseRateBuilder):
     def rate_builders(self):
         return self._rate_builders
         
-    @property_setter('rate_builders')
+    @prop_setter
     def add_rate_builders(self, rate_builder_array):
         if rate_builder_array is None:
             self._init_attr('_rate_builders', [])
@@ -77,21 +68,55 @@ class CombinedRateBuilder(BaseRateBuilder):
             new_rate_builders = []
             for rb in rate_builder_array:
                 if get_builder_type(rb) == 'rate':
-                    new_rate_builders.append(rb.copy_immutable())
+                    new_rate_builders.append(rb.copy().set_immutable())
                 else:
                     raise TypeError("the rate_builder_array must contain only rate builder objects")
             self._rate_builders = self._rate_builders + tuple(new_rate_builders)
     
 
+    # channels and steps_per_ms cannot be set as they are entirely derived from the constiuent
+    # rate-builders
+    @property
+    def channels(self):
+        return self._channels
+
+    @property
+    def steps_per_ms(self):
+        return self._steps_per_ms
+
+    @property
+    def time_length(self):
+        if self._rate_builders:
+            return self._rate_builders[0].time_length
+        else:
+            return np.uint32(0)
+
+    @time_length.setter
+    def time_length(self, time_length_):
+        new_rate_builders = []
+        for rb in self._rate_builders:
+            rb = rb.copy_mutable()
+            rb.time_length = time_length_
+            rb.set_immutable()
+            new_rate_builders.append(rb)
+        self._rate_builders = tuple(new_rate_builders)
+
+    @property
+    @requires_built
+    def rate_array(self):
+        return self._rate_array
+
     def _build(self):
         # First, we build all the rate builders
         new_built_rbs = []
         for rb in self._rate_builders:
-            new_built_rbs.append(rb.copy_rebuilt())
+            new_built_rbs.append(rb.build_copy())
         self._rate_builders = tuple(new_built_rbs)
 
         nchannels = self._channels.size
-        # Then, for each rate, builder we extend the first dimention to be equal to the number of channels with 0 as the output wherever there is no channel. If it is a zero dimensional array, we simply let it be
+        # Then, for each rate-builder we extend the first dimention to be equal to the number of
+        # channels with 0 as the output wherever there is no channel. If it is a zero dimensional
+        # array, we simply let it be
         channel_index_map = {self._channels[i]:i for i in range(nchannels)}
         output_rate_array_list = []
         for rb in self._rate_builders:
@@ -108,29 +133,6 @@ class CombinedRateBuilder(BaseRateBuilder):
             # NEED TO WRITE code to implement hist eq
             raise ValueError("histogram equalization not yet implemented")
         self._rate_array = final_rate_array
-
-
-def combine_sum(rate_array_list):
-    return_arr = 0
-    for arr in rate_array_list:
-        return_arr = return_arr + arr
-    return return_arr
-
-def combine_sigmoid(K, M):
-    """
-    This is a function that returns the appropriate sigmoid function to be used in
-    CombinedRateBuilder. See code to find out what it does. it's simple enough
-    """
-    def combine_sigmoid_func(rate_array_list):
-        assert len(rate_array_list) == 2, "sigmoidal combination is only valid for 2 rate arrays"
-        A = rate_array_list[0]
-        B = rate_array_list[1]
-        f_max = max(np.amax(A), np.amax(B))
-        x = A + B
-
-        return f_max/(1+np.exp(-2*K*(x-1.0*M*f_max)/f_max))
-
-    return combine_sigmoid_func
 
 
 #histogram matching

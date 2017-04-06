@@ -1,8 +1,11 @@
 from . import BaseRateBuilder
 
 import numpy as np
-from numpy.random.mtrand import _rand as mt
+from numpy.random import mtrand
 from numba import jit
+mtgen = mtrand.binomial.__self__
+
+from genericbuilder.propdecorators import requires_built
 
 class LegacyRateBuilder(BaseRateBuilder):
     """
@@ -15,7 +18,7 @@ class LegacyRateBuilder(BaseRateBuilder):
 
     This is a rate builder that mimics the behaviour of the rate builder that
     is currently being used in christophs simulation. It simulates a reflecting
-    boundary and is thus slow.
+    boundary and is thus slow without numba.
     
     Initialization / Parameters
     ===========================
@@ -25,8 +28,8 @@ class LegacyRateBuilder(BaseRateBuilder):
     Algorithm Parameters
     --------------------
 
-    *steps_per_ms*
-      Integer representing the ms/dt of the current simulation
+    *steps_per_ms*    
+      Integer [1/ms] representing the number of simulation steps ms of the current simulation
     
     *channels*
       An iterable representing the channel indices that the builder is
@@ -77,20 +80,45 @@ class LegacyRateBuilder(BaseRateBuilder):
 
     """
 
-    def __init__(self, config_dict):
+    built_properties = 'rate_array'
+
+    def __init__(self, mean, sigma, theta, delay, max_rate,
+                       channels=[], steps_per_ms=1, time_length=0,
+                       rng=mtgen):
         """
         Relevant fields in the config_dict can be seen in the Parameters
         section of the Class documentation
         """
-        super().__init__(config_dict)
+        super().__init__()  # only purpose is to run BaseGenericBuilder init
 
-        self.mean = config_dict['mean']
-        self.sigma = config_dict['sigma']
-        self.theta = config_dict['theta']
-        self.delay = config_dict.get('delay') or 50
-        self.max_rate = config_dict.get('max_rate') or 50.0
-        self.rng = config_dict.get('rng') or mt
+        # initializing Data members with default values
+        self._channels = np.zeros(0, dtype=np.uint32)
+        self._steps_per_ms = np.uint32(1)
+        self._time_length = np.float64(0)
+        self._rng = mtgen
 
+        # Assigning core properties
+        self.channels = channels
+        self.steps_per_ms = steps_per_ms
+        self.time_length = time_length
+
+        # Assigning the random generator
+        self.rng = rng
+
+        # Assigning the compulsory / positional arguments
+        self.mean = mean
+        self.sigma = sigma
+        self.theta = theta
+        self.delay = delay
+        self.max_rate = max_rate
+
+    def _preprocess(self):
+        # Calculating all the dependent variables
+        self._steps_length = int(self._time_length*self._steps_per_ms + 0.5)
+
+    def _validate(self):
+        pass
+    
     @staticmethod
     @jit(nopython=True, cache=True)
     def _fast_build(std_normal_array, sigma, mean, theta, steps_per_ms, log_max_rate):
@@ -98,7 +126,7 @@ class LegacyRateBuilder(BaseRateBuilder):
         x[:, 0] = mean + std_normal_array[:,0]
         sim_length = std_normal_array.shape[1]
         for i in range(sim_length-1):
-            x[:, i+1] = x[:, i] + (theta*(mean - x[:, i]) + std_normal_array[:,i+1]*sigma)/steps_per_ms
+            x[:, i+1] = x[:, i] + (theta*(mean - x[:, i]) + std_normal_array[:, i+1]*sigma)/steps_per_ms
             x[x[:, i+1] > log_max_rate, i+1] = log_max_rate
 
         return x
@@ -121,6 +149,7 @@ class LegacyRateBuilder(BaseRateBuilder):
                                           steps_per_ms=self._steps_per_ms,
                                           log_max_rate=log_max_rate)
         self._rate_array = np.exp(x[:, self._delay:])
+        self._rate_array.setflags(write=False)
 
 
     @property
@@ -187,3 +216,73 @@ class LegacyRateBuilder(BaseRateBuilder):
     @rng.setter
     def rng(self, rng_):
         self._rng = rng_
+
+    @property
+    def steps_per_ms(self):
+        """
+        Get or Set the time resolution of the rate pattern by specifying an integer representing
+        the number of time steps per ms
+
+        :return:
+        """
+        return self._steps_per_ms
+
+    @steps_per_ms.setter
+    def steps_per_ms(self, steps_per_ms_):
+        if steps_per_ms_ is None:
+            self._init_attr('_steps_per_ms', np.uint32(1))
+        else:
+            if steps_per_ms_ >= 1:
+                self._steps_per_ms = np.uint32(steps_per_ms_)
+            else:
+                raise ValueError("'steps_per_ms' must be non-zero positive integer")
+
+    @property
+    def time_length(self):
+        """
+        Get or set the time length of the rate pattern in ms.
+
+        :GET: This function will return the time length of the built rate pattern i.e. the
+            rounded time length. i.e. `self._steps_length/self.steps_per_ms`
+
+        :SET: This function will round the time to the nearest time step and use that as the actual
+            time length.
+
+        :return: An np.float64 scalar
+        """
+        return self._steps_length / self._steps_per_ms
+
+    @time_length.setter
+    def time_length(self, time_length_):
+        if time_length_ >= 0:
+            self._time_length = np.float64(time_length_)
+        else:
+            raise ValueError("property 'time_length' must be a non-negative numeric value")
+
+    @property
+    def channels(self):
+        """
+        Returns channels property. In order to make it writable, copy it via X.channels.copy() or
+        np.array(X.channels)
+        """
+        return self._channels
+
+    @channels.setter
+    def channels(self, channels_):
+        # Assuming 1D iterable
+        channel_unique_array = np.array(list(set(channels_)), dtype=np.int32)
+        if np.all(channel_unique_array >= 0):
+            self._channels = np.array(channel_unique_array, dtype=np.uint32)
+            self._channels.setflags(write=False)
+        else:
+            raise ValueError("'channels' must be a vector of non-negative integers")
+
+    @property
+    @requires_built
+    def rate_array(self):
+        """
+        Returns read-only view of channels property. In order to make it writable, copy it
+        via X.rate_array.copy() or np.array(X.rate_array)
+        """
+        return self._rate_array
+

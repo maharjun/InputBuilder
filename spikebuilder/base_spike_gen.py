@@ -2,9 +2,10 @@ __author__ = 'Arjun'
 
 import numpy as np
 
-from genericbuilder.baseclass import BaseGenericBuilder
+from genericbuilder.baseclass_simple import BaseGenericBuilder
 from genericbuilder.propdecorators import *
 
+from abc import abstractmethod
 
 class BaseSpikeBuilder(BaseGenericBuilder):
     """
@@ -13,11 +14,11 @@ class BaseSpikeBuilder(BaseGenericBuilder):
     1.  Has __init__ method initializing properties common between different
         SpikeGen classes
 
-    2.  Subscribes to the metaclass MetaSpikeGen so that all derived classes
-        get the transformations done by MetaSpikeGen
+    2.  Subscribes to the metaclass MetaSpikeGen so that all derived classes get
+        the transformations done by MetaSpikeGen
 
-    3.  Defines the properties common across different SpikeGen classes with
-        get and set functions for 
+    3.  Defines the properties common across different SpikeGen classes with get
+        and set functions for
 
     4.  All properties steps_per_ms, time_length, and channels have their get
         functions decorated by requires_preprocessed. This is because in
@@ -39,155 +40,161 @@ class BaseSpikeBuilder(BaseGenericBuilder):
 
     builder_type = 'spike'
 
-    def __init__(self, conf_dict={}):
+    def __init__(self):
 
-        super().__init__(conf_dict)
+        super().__init__()  # Initializes the core data members
 
-        # Default Initialization
-        self.time_length = None
-        self.steps_per_ms = None
-        self.channels = None
-        self.start_time = None
+        # Default Initialization of data members in case properties are not specified
 
-        # Initialization from dict. Note that this is forward-looking
-        # which is by design
-        self.time_length = conf_dict.get('time_length')
-        self.steps_per_ms = conf_dict.get('steps_per_ms')
-        self.channels = conf_dict.get('channels')
-        self.start_time = conf_dict.get('start_time')
+        # Assignment of properties from the initialization arguments
 
-    def _build(self):
-        super()._build()
-        
-    def _preprocess(self):
-        """Performs the follwing preprocessing on the class:
+    # ------------------------------------------------------------------------------------- #
+    # CORE INTERFACE FEATURES
+    # ------------------------------------------------------------------------------------- #
+    # 
+    # All the core interface features (abstract functions) must be implemeted in
+    # the subclass
 
-        1.  Calculates the value of _steps_length
-        2.  Initializes _start_time to be equal to dt (since 0 results in NEST Error (Why?))
-        3.  Recalculates self._spike_time_array (relevant when start_time changes)
-        """
-        super()._preprocess()
-        self._steps_length = np.uint32(self._time_length * self._steps_per_ms + 0.5)
-        self._start_time_step = np.uint32(self._start_time*self._steps_per_ms + 0.5)
-
-
-    def _clear(self):
-        self._spike_rel_step_array = np.ndarray((0,0))
-        self._spike_weight_array = np.ndarray((0,0))
-        super()._clear()
+    # def _build(self):
+    # def _preprocess(self):
+    # def _validate(self):
 
     @property
-    @requires_preprocessed
+    @abstractmethod
     def time_length(self):
-        return self._time_length
+        """
+        Returns the time length of the current spike pattern in ms
 
-    @time_length.setter
-    def time_length(self, time_length_):
-        if time_length_ is None:
-            self._init_attr('_time_length', np.float64(0))
-        else:
-            if time_length_ >= 0:
-                self._time_length = np.float64(time_length_)
-            else:
-                raise ValueError("'time_length' must be non-negative")
+        :returns: an np.float64 value representing the time length of the spike pattern
 
+        NOTE: This is a core interface property that must be implemented (at-least the
+              getter) in the subclass spike builders.
+        """
+        pass
 
     @property
-    @requires_preprocessed
+    @abstractmethod
     def steps_per_ms(self):
-        return self._steps_per_ms
+        """
+        Returns/sets the time resolution in terms of simulation steps per ms
 
-    @steps_per_ms.setter
-    def steps_per_ms(self, steps_per_ms_):
-        if steps_per_ms_ is None:
-            self._init_attr('_steps_per_ms', np.uint32(1))
-        else:
-            if steps_per_ms_ >= 1:
-                self._steps_per_ms = np.uint32(steps_per_ms_)
-            else:
-                raise ValueError("'steps_per_ms' must be >= 1")
+        :returns: An np.uint32 that represents the
 
+        NOTE: This is a core interface property that must be implemented (at-least the
+              getter) in the subclass spike builders.
+        """
+        pass
 
     @property
-    @requires_preprocessed
+    @abstractmethod
     def channels(self):
-        channels_ro = self._channels[:]
-        channels_ro.setflags(write=False)
-        return channels_ro
+        """
+        Returns/sets the channels for which the spikes are generated.
 
-    @channels.setter
-    def channels(self, channels_):
-        if channels_ is None:
-            self._init_attr('_channels', np.zeros(0, dtype=np.uint32))
-        else:
-            channel_unique_array = np.array(sorted(set(channels_)), dtype=np.int32)
-            if np.all(channel_unique_array >= 0):
-                self._channels = np.array(channel_unique_array, dtype=np.uint32)
-                self._channels.setflags(write=False)
-            else:
-                raise ValueError("'channels' should be integers >= 0")
+        :returns: a numpyp 1-D uint32 array containing the indices of the channels in
+            ascending order
 
+        NOTE: This is a core interface property that must be implemented (at-least the
+              getter) in the subclass spike builders.
+        """
+        pass
 
-    @property
-    @requires_preprocessed
-    def start_time(self):
-        return self._start_time_step/self._steps_per_ms
-
-    @start_time.setter
-    @doesnt_require_rebuild
-    def start_time(self, start_time_):
-        if start_time_ is None:
-            self._init_attr('_start_time', np.float64(0))
-        else:
-            if start_time_ >= 0:
-                self._start_time = np.float64(start_time_)
-            else:
-                raise ValueError("'start_time' must be non-negative")
-
-
-    @property
-    @requires_preprocessed
-    def steps_length(self):
-        return self._steps_length
+    # @channels.setter
+    # def channels(self, channels_):
+    #     if channels_ is None:
+    #         self._init_attr('_channels', np.zeros(0, dtype=np.uint32))
+    #     else:
+    #         channel_unique_array = np.array(sorted(set(channels_)), dtype=np.int32)
+    #         if np.all(channel_unique_array >= 0):
+    #             self._channels = np.array(channel_unique_array, dtype=np.uint32)
+    #             self._channels.setflags(write=False)
+    #         else:
+    #             raise ValueError("'channels' should be integers >= 0")
 
     @property
     @requires_built
+    @abstractmethod
     def spike_rel_step_array(self):
-        ret = np.ndarray(self._spike_rel_step_array.shape, dtype=object)
-        for i in range(ret.size):
-            ret[i] = self._spike_rel_step_array[i][:]
-            ret[i].setflags(write=False)
-        ret.setflags(write=False)
-        return ret
+        """
+        Property that returns the relative spike step array.
+
+        :returns: an array of arrays A such that::
+            
+              A[i][j] = TIME STEP of the jth spike of the ith neuron relative to the
+                        beginning of the spike pattern
+        
+        NOTE: This is a core interface property that must be implemented (only the
+              getter) in the subclass spike builders.
+        """
+        pass
 
     @property
     @requires_built
+    @abstractmethod
     def spike_weight_array(self):
-        ret = np.ndarray(self._spike_weight_array.shape, dtype=object)
+        """
+        Property that returns the spike weight array.
+
+        :returns: an array of arrays A such that::
+            
+              A[i][j] = WEIGHT of the jth spike of the ith neuron
+        
+        NOTE: This is a core interface property that must be implemented (only the
+              getter) in the subclass spike builders.
+        """
+        raise AttributeError(
+            "The property 'spike_weight_array' is not implemented in class '{}'".format(self.__class__.__name__))
+
+    # ------------------------------------------------------------------------------------- #
+    # MIXIN INTERFACE FEATURES
+    # ------------------------------------------------------------------------------------- #
+
+    @property
+    def steps_length(self):
+        """
+        Returns the time length of the pattern in simulation steps
+
+        This is a mixin property that will function correctly if the core interface is
+        correcty implemented
+        """
+        return int(self.time_length * self.steps_per_ms + 0.5)
+
+    @requires_built
+    def spike_step_array(self, start_time):
+        """
+        Gives the spike step array offset as though the starting time step is
+
+            round(start_time*self.steps_per_ms)
+
+        This is a mixin property that will function correctly if the core interface is
+        correcty implemented
+        """
+        start_time_step = int(start_time*self.steps_per_ms + 0.5)
+        ret = np.ndarray(self.spike_rel_step_array.shape, dtype=object)
         for i in range(ret.size):
-            ret[i] = self._spike_weight_array[i][:]
+            ret[i] = self.spike_rel_step_array[i] + start_time_step
             ret[i].setflags(write=False)
         ret.setflags(write=False)
         return ret
 
-    @property
-    @cached('spike_step_array')
     @requires_built
-    def spike_step_array(self):
-        ret = np.ndarray(self._spike_rel_step_array.shape, dtype=object)
-        for i in range(ret.size):
-            ret[i] = self._spike_rel_step_array[i] + self._start_time_step
-            ret[i].setflags(write=False)
-        ret.setflags(write=False)
-        return ret
+    def spike_time_array(self, start_time=0):
+        """
+        Returns the spike time array offset as though the starting time is start_time
 
-    @property
-    @cached('spike_time_array')
-    @requires_built
-    def spike_time_array(self):
-        ret = np.ndarray(self._spike_rel_step_array.shape, dtype=object)
+        :returns: an array of arrays A such that::
+
+              A[i][j] = TIME (not Time step) of the jth spike of the ith neuron
+                        assuming that start time is 'start_time'
+
+        This is a mixin property that will function correctly if the core interface is
+        correcty implemented
+        """
+        steps_per_ms = self.steps_per_ms
+        start_time_step = int(start_time*steps_per_ms + 0.5)
+        ret = np.ndarray(self.spike_rel_step_array.shape, dtype=object)
         for i in range(ret.size):
-            ret[i] = (self._spike_rel_step_array[i] + self._start_time_step)/self._steps_per_ms
+            ret[i] = (self.spike_rel_step_array[i] + start_time_step)/steps_per_ms
             ret[i].setflags(write=False)
         ret.setflags(write=False)
         return ret

@@ -4,9 +4,12 @@ from . import BaseRateBuilder
 from genericbuilder.propdecorators import *
 
 import numpy as np
-from numpy.random.mtrand import _rand as mt
+from numpy.random import mtrand
 import scipy.signal as sg
 from collections import namedtuple
+
+mtgen = mtrand.binomial.__self__
+
 
 class OURateBuilder(BaseRateBuilder):
     """Rate Generator via Homogenous OU Process
@@ -51,18 +54,43 @@ class OURateBuilder(BaseRateBuilder):
         rc(h) = rc(0)e^(-theta*h) = rd[0]*(1-theta_DT*h) = rd[1]
     """
 
-    def __init__(self, conf_dict):
+    built_properties = ['rate_array']
 
-        super(OURateBuilder, self).__init__(conf_dict)
+    def __init__(self, mean, sigma, theta,
+                       channels=[], steps_per_ms=1, time_length=0,
+                       rng=mtgen):
 
+        super().__init__()  # only purpose is to run BaseGenericBuilder init
+        
+        # Initialize Primary Data members
+        self._mean = np.float64(0)
+        self._sigma = np.float64(1)
+        self._theta = np.float64(1)
+        
+        self._steps_length = np.uint32(0)
+        self._time_length = np.float64(0)
+        self._channels = np.zeros(0)
+
+        self._rng = mtgen
+        
+        # Setting Core parameters
+        self.steps_per_ms = steps_per_ms
+        self.channels = channels
+        self.time_length = time_length
+
+        # setting random number generator
+        self.rng = rng
+        
         # Setting OU Parameters
-        self.mean     = conf_dict['mean']
-        self.sigma    = conf_dict['sigma']
-        self.theta    = conf_dict['theta']
-        self.rng      = conf_dict.get('rng') or mt
+        self.mean = mean
+        self.sigma = sigma
+        self.theta = theta
+
+    def _validate(self):
+        pass
 
     def _preprocess(self):
-        super()._preprocess()
+        self._steps_length = np.uint32(self._time_length * self._steps_per_ms + 0.5)
         self._DT_params = self.convert_params_CT_to_DT()
 
     def convert_params_CT_to_DT(self):
@@ -70,50 +98,55 @@ class OURateBuilder(BaseRateBuilder):
         mean = self._mean
         sigma = self._sigma
         theta = self._theta
-        h = 1/self._steps_per_ms
+        h = 1 / self._steps_per_ms
 
-        mean_DT  = mean
-        theta_DT = (1 - np.exp(-theta*h))/h
-        sigma_DT = sigma*np.sqrt(theta_DT * (2 - theta_DT*h)/(2*h*theta))  # ignoring alpha = 1
+        mean_DT = mean
+        theta_DT = (1 - np.exp(-theta * h)) / h
+        sigma_DT = sigma * np.sqrt(theta_DT * (2 - theta_DT * h) / (2 * h * theta))  # ignoring alpha = 1
         DT_params = namedtuple('DT_param_struct', ['mean', 'theta', 'sigma'])(
             mean=mean_DT,
             theta=theta_DT,
             sigma=sigma_DT)
         return DT_params
 
-
+    # --------- PROPERTY mean --------- #
     @property
     def mean(self):
+        """
+        Value of mean rate generated [Hz]. See class documentation for more details
+        """
         return self._mean
 
     @mean.setter
     def mean(self, mean_):
-        self._mean = np.float_(mean_)
-
+        self._mean = np.float64(mean_)
 
     @property
     def sigma(self):
+        """
+        Scaling of the Weiner Process [Hz]. See class documentation for more details
+        """
         return self._sigma
 
     @sigma.setter
     def sigma(self, sigma_):
         if sigma_ > 0:
-            self._sigma = np.float_(sigma_)
+            self._sigma = np.float64(sigma_)
         else:
             raise ValueError("'sigma' must have a positive non-zero value")
 
-
     @property
     def theta(self):
+        """
+        """
         return self._theta
 
     @theta.setter
     def theta(self, theta_):
         if theta_ > 0:
-            self._theta = np.float_(theta_)
+            self._theta = np.float64(theta_)
         else:
             raise ValueError("'theta' must have a positive non-zero value")
-
 
     @property
     def rng(self):
@@ -124,10 +157,74 @@ class OURateBuilder(BaseRateBuilder):
         # No special type checks here. random generator is considered
         # used enough to bring out any type errors quickly enough
         self._rng = rng_
-    
 
     @property
-    @requires_preprocessed
+    def steps_per_ms(self):
+        """
+        Get or Set the time resolution of the rate pattern by specifying an integer representing
+        the number of time steps per ms
+
+        :return:
+        """
+        return self._steps_per_ms
+
+    @steps_per_ms.setter
+    def steps_per_ms(self, steps_per_ms_):
+        if steps_per_ms_ is None:
+            self._init_attr('_steps_per_ms', np.uint32(1))
+        else:
+            if steps_per_ms_ >= 1:
+                self._steps_per_ms = np.uint32(steps_per_ms_)
+            else:
+                raise ValueError("'steps_per_ms' must be non-zero positive integer")
+
+    @property
+    def time_length(self):
+        """
+        Get or set the time length of the rate pattern in ms.
+
+        :GET: This function will return the time length of the built rate pattern i.e. the
+            rounded time length. i.e. `self._steps_length/self.steps_per_ms`
+
+        :SET: This function will round the time to the nearest time step and use that as the actual
+            time length.
+
+        :return: An np.float64 scalar
+        """
+        return self._steps_length / self._steps_per_ms
+
+    @time_length.setter
+    def time_length(self, time_length_):
+        if time_length_ is None:
+            self._init_attr('_time_length', np.float64(0))
+        else:
+            if time_length_ >= 0:
+                self._time_length = np.float64(time_length_)
+            else:
+                raise ValueError("property 'time_length' must be a non-negative numeric value")
+
+    @property
+    def channels(self):
+        """
+        Returns channels property. In order to make it writable, copy it via X.channels.copy() or
+        np.array(X.channels)
+        """
+        return self._channels
+
+    @channels.setter
+    def channels(self, channels_):
+        # Assuming 1D iterable
+        if channels_ is None:
+            self._init_attr('_channels', np.ndarray(0, dtype=np.uint32))
+        else:
+            channel_unique_array = np.array(list(set(channels_)), dtype=np.int32)
+            if np.all(channel_unique_array >= 0):
+                self._channels = np.array(channel_unique_array, dtype=np.uint32)
+                self._channels.setflags(write=False)
+            else:
+                raise ValueError("'channels' must be a vector of non-negative integers")
+
+    @property
     def DT_params(self):
         """
         Returns a named tuple with the following fields:
@@ -140,29 +237,36 @@ class OURateBuilder(BaseRateBuilder):
         """
         return self._DT_params
 
+    @property
+    @requires_built
+    def rate_array(self):
+        """
+        Returns read-only view of channels property. In order to make it writable, copy it
+        via X.rate_array.copy() or np.array(X.rate_array)
+        """
+        return self._rate_array
 
     def _build(self):
         """
-        Does the actualwork of generating the OU Process from converted DT OU
-        Parameters. This uses the scipy filter to create the process using the
-        filter representing the difference equation below
+        Does the actualwork of generating the OU Process from converted DT OU Parameters. This
+        uses the scipy filter to create the process using the filter representing the difference
+        equation below
 
-        y[n] - y[n-1] = -(theta_DT*y[n] + sigma_DT*w[n])*h
-        [where y[n] = x[n] - mean]
+            y[n] - y[n-1] = -(theta_DT*y[n] + sigma_DT*w[n])*h
+            [where y[n] = x[n] - mean]
 
-        => Y(z) = H(z)W(z)
+            => Y(z) = H(z)W(z)
 
         with H(z) = sigma_DT*h/(1 - z^{-1}(1-theta_DT*h))
 
-        In order to remove initial transients we only consider the samples
-        n > d such that rd[d] < thresh*rd[0] i.e. only d :: (1-theta_DT*h)^d < thresh
-        """        
-        super()._build()
+        In order to remove initial transients we initialize the distribution across channels from
+        the steady state distribution
+        """
 
         theta_DT = self._DT_params.theta
         sigma_DT = self._DT_params.sigma
-        mean     = self._DT_params.mean
-        h        = 1/self._steps_per_ms
+        mean = self._DT_params.mean
+        h = 1 / self._steps_per_ms
         
         # # Debug prints
         # print("CT variance: {:<10.5f}".format(self._sigma**2/(2*self._theta)))
@@ -180,11 +284,12 @@ class OURateBuilder(BaseRateBuilder):
 
         # Calculate Initial Condition from Steady state distribution of
         # OU Process. This way we wont have to wait for the process to burn in 
-        steady_state_SD = self._sigma/np.sqrt(2*self._theta)
+        steady_state_SD = self._sigma / np.sqrt(2 * self._theta)
         rate_array_init = self._rng.normal(loc=0, scale=steady_state_SD, size=(self._channels.size, 1))
-        filter_init_cond = (1- theta_DT*h)*rate_array_init
+        filter_init_cond = (1 - theta_DT * h) * rate_array_init
 
         awgn_array = self._rng.normal(size=curr_rate_array_shape)
-        filtered_awgn_array, __ = sg.lfilter([sigma_DT*h], [1, -(1 - theta_DT*h)], awgn_array, zi=filter_init_cond)
+        filtered_awgn_array, __ = sg.lfilter([sigma_DT * h], [1, -(1 - theta_DT * h)], awgn_array, zi=filter_init_cond)
 
         self._rate_array = filtered_awgn_array + mean
+        self._rate_array.setflags(write=False)
