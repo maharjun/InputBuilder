@@ -1,6 +1,6 @@
 __author__ = 'Arjun'
 
-from genericbuilder.baseclass_simple import BaseGenericBuilder
+from genericbuilder.baseclass import BaseGenericBuilder
 from genericbuilder.propdecorators import requires_built
 
 from abc import abstractmethod

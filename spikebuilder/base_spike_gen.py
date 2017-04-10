@@ -2,7 +2,7 @@ __author__ = 'Arjun'
 
 import numpy as np
 
-from genericbuilder.baseclass_simple import BaseGenericBuilder
+from genericbuilder.baseclass import BaseGenericBuilder
 from genericbuilder.propdecorators import *
 
 from abc import abstractmethod
