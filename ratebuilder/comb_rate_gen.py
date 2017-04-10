@@ -9,8 +9,7 @@ class CombinedRateBuilder(BaseRateBuilder):
 
     built_properties = ['rate_array']
 
-    def __init__(self, rate_builders=(), transform=combine_sum, use_hist_eq=False,
-                       channels=[], steps_per_ms=1, time_length=0):
+    def __init__(self, rate_builders=(), transform=combine_sum, use_hist_eq=False):
         # Initialization done directly as no None initializable property / function
         # corresponding to _rate_builders
         self._rate_builders = ()

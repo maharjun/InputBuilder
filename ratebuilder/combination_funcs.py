@@ -13,18 +13,25 @@ def combine_sum(rate_array_list):
         return_arr = return_arr + arr
     return return_arr
 
-def combine_sigmoid(K, M):
+class combine_sigmoid:
     """
-    This is a function that returns the appropriate sigmoid function to be used in
-    CombinedRateBuilder. See code to find out what it does. it's simple enough
+    This is a class that returns a callable object that represents the appropriate
+    sigmoid function to be used in CombinedRateBuilder. See code to find out what
+    it does. it's simple enough
     """
-    def combine_sigmoid_func(rate_array_list):
+
+    def __init__(self, K, M):
+        self.K = np.float(K)
+        self.M = np.float(M)
+
+    def __call__(self, rate_array_list):
         assert len(rate_array_list) == 2, "sigmoidal combination is only valid for 2 rate arrays"
         A = rate_array_list[0]
         B = rate_array_list[1]
         f_max = max(np.amax(A), np.amax(B))
         x = A + B
 
-        return f_max/(1+np.exp(-2*K*(x-1.0*M*f_max)/f_max))
+        K = self.K
+        M = self.M
 
-    return combine_sigmoid_func
+        return f_max/(1+np.exp(-2*K*(x-1.0*M*f_max)/f_max))

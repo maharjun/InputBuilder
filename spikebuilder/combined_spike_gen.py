@@ -99,9 +99,14 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
             self._channels = np.array(0, dtype=np.uint32)
 
         if self._time_length_is_derived:
+            def get_time_length_from_ri(ri):
+                if ri[2] is None:
+                    return self._spike_builders[ri[1]].steps_length/self._steps_per_ms
+                else:
+                    return ri[2]
+
             if self._spike_builders:
-                self._time_length = max(start + self._spike_builders[ind].steps_length/self._steps_per_ms
-                                        for start, ind in self._repeat_instances)
+                self._time_length = max(ri[0] + get_time_length_from_ri(ri) for ri in self._repeat_instances)
             else:
                 self._time_length = 0
 
@@ -154,16 +159,19 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
     @property
     def repeat_instances(self):
-        return self._repeat_instances_sorted
+        return self._repeat_instances
 
     @repeat_instances.setter
     def repeat_instances(self, repeat_instances_list):
-        assert all(len(ri) == 2 and ri[0] >= 0 and 0 <= ri[1] < len(self._spike_builders)
+        assert all(len(ri) in {2,3} and ri[0] >= 0 and 0 <= ri[1] < len(self._spike_builders)
                    for ri in repeat_instances_list), \
-            ("The repeat instances must be 2-tuples with the first instance being the"
-             " starting time (>=0), and the second instance being the index of the spike"
-             " builder to use")
-        self._repeat_instances = tuple(sorted(repeat_instances_list))
+            ("The repeat instances must be 2 or 3-tuples with the first value being the"
+             " starting time (>=0), and the second value being the index of the spike"
+             " builder to use, and the third value if specified must be the time length"
+             " to stretch the spike builder.")
+        repeat_instances_list = [(ri[0], ri[1], None if len(ri) == 2 else ri[2])
+                                 for ri in repeat_instances_list]
+        self._repeat_instances = tuple(sorted(repeat_instances_list, key=lambda x: x[0:2]))
 
     def _build(self):
 
@@ -178,9 +186,12 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         time_build_start = timer()
         spike_builders_list = list(self._spike_builders)
         built_builders = []  # create one built copy of the builder for each repeat index
-        for start, index in self._repeat_instances:
-            spike_builders_list[index] = spike_builders_list[index].build_copy()
-            built_builders.append(spike_builders_list[index])        
+        for start, index, stretch in self._repeat_instances:
+            current_sb = spike_builders_list[index].copy_mutable()
+            if stretch is not None:
+                current_sb.time_length = stretch
+            spike_builders_list[index] = current_sb.build().set_immutable()
+            built_builders.append(current_sb)
         self._spike_builders = tuple(spike_builders_list)
         time_build_end = timer()
 

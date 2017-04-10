@@ -9,13 +9,23 @@ mtgen = mtrand.binomial.__self__
 
 class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
-    def __init__(self, rate, rng=mtgen,
-                       channels=[], steps_per_ms=1, time_length=0):
+    def __init__(self, rate,
+                       channels=[], steps_per_ms=1, time_length=0,
+                       rng=mtgen):
 
         super().__init__()
 
         self.rate = rate
+        self.channels = channels
+        self.steps_per_ms = steps_per_ms
+        self.time_length = time_length
         self.rng = rng
+
+    def _validate(self):
+        pass
+
+    def _preprocess(self):
+        pass
 
     @property
     def time_length(self):
@@ -38,7 +48,7 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
         :returns: An np.uint32 that represents the
         """
-        return self._steps_length
+        return self._steps_per_ms
 
     @steps_per_ms.setter
     def steps_per_ms(self, steps_per_ms):
@@ -57,7 +67,8 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
     @channels.setter
     def channels(self, channels):
-        channels = np.array(channels+0.5, dtype=np.int32)  # 0.5 for rounding off
+        channels = np.array(channels)
+        channels = (channels + 0.5).astype(np.int32)  # 0.5 for rounding off
         channels_unique_sorted = np.lib.arraysetops.unique(channels)
         assert np.all(channels_unique_sorted >= 0), "Channel indices should be non-negative integers"
         channels_unique_sorted = channels_unique_sorted.astype(np.uint32)
@@ -110,12 +121,16 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
     def _build(self):
         super()._build()
-        nchannels = self._channels.size
-        spike_weight_array = self._rng.poisson(lam=self._rate/(1000*self._steps_per_ms),
-                                        size=(nchannels, self._steps_length)).astype(np.uint32)
-        self._spike_rel_step_array = np.array(
-            [np.argwhere(spike_weight_array[i,:])[:,0].astype(np.uint32) for i in range(nchannels)],
-            dtype=object)
-        self._spike_weight_array = np.array(
-            [spike_weight_array[i, self._spike_rel_step_array[i]] for i in range(nchannels)],
-            dtype=object)
+        nchannels = self.channels.size
+        spike_weight_array = self._rng.poisson(lam=self.rate/(1000*self.steps_per_ms),
+                                        size=(nchannels, self.steps_length)).astype(np.uint32)
+        self._spike_rel_step_array = np.ndarray(nchannels, dtype=object)
+        self._spike_weight_array = np.ndarray(nchannels, dtype=object)
+
+        for i in range(nchannels):
+            self._spike_rel_step_array[i] = np.argwhere(spike_weight_array[i,:])[:,0].astype(np.uint32)
+            self._spike_weight_array[i] = spike_weight_array[i, self._spike_rel_step_array[i]]
+            self._spike_rel_step_array[i].setflags(write=False)
+            self._spike_weight_array[i].setflags(write=False)
+        self._spike_rel_step_array.setflags(write=False)
+        self._spike_weight_array.setflags(write=False)
