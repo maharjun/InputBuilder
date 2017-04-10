@@ -175,7 +175,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
     def _build(self):
 
-        nchannels = self._channels.size
+        nchannels = self.channels.size
         channel_index_map = dict(zip(self.channels, range(nchannels)))
 
         # Performing Builds for each repeat instance. Note the builds are performed
@@ -217,10 +217,10 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         # Grouping together the weights of the spikes that happen in a single time step
         # and sorting the time step values
         spike_steps_unique = [np.lib.arraysetops.unique(x) for x in spike_steps_joined]
-        spike_weights_joined = [np.bincount(step_inds, weights=weights)[np.lib.arraysetops.unique(step_inds)]
-                                  for step_inds, step_inds_unique, weights in zip(spike_steps_joined,
-                                                                                  spike_steps_unique,
-                                                                                  spike_weights_joined)]
+        spike_weights_joined = [np.bincount(step_inds, weights=weights)[step_inds_unique]
+                                for step_inds, step_inds_unique, weights in zip(spike_steps_joined,
+                                                                                spike_steps_unique,
+                                                                                spike_weights_joined)]
         spike_steps_joined = spike_steps_unique
 
         self._spike_rel_step_array = np.array(spike_steps_joined, dtype=object)

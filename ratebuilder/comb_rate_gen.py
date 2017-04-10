@@ -106,6 +106,7 @@ class CombinedRateBuilder(BaseRateBuilder):
         return self._rate_array
 
     def _build(self):
+        print("Building Rate Array")
         # First, we build all the rate builders
         new_built_rbs = []
         for rb in self._rate_builders:

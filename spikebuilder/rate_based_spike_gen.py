@@ -194,7 +194,6 @@ class RateBasedSpikeBuilder(BaseSpikeBuilder):
 
     def _build(self):
 
-        super()._build()
         self._rate_builder = self._rate_builder.build_copy()
 
         nchannels = self.channels.size

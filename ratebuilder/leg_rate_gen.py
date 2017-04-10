@@ -91,12 +91,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         """
         super().__init__()  # only purpose is to run BaseGenericBuilder init
 
-        # initializing Data members with default values
-        self._channels = np.zeros(0, dtype=np.uint32)
-        self._steps_per_ms = np.uint32(1)
-        self._time_length = np.float64(0)
-        self._rng = mtgen
-
         # Assigning core properties
         self.channels = channels
         self.steps_per_ms = steps_per_ms
@@ -132,6 +126,7 @@ class LegacyRateBuilder(BaseRateBuilder):
         return x
 
     def _build(self):
+        print("Building Rate Array")
         nchannels = self._channels.size
         simlength = self._delay + self._steps_length
         sim_array_size = (nchannels, simlength)
