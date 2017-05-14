@@ -99,5 +99,5 @@ class ConstRateBuilder(BaseRateBuilder):
     def rate_array(self):
         return self._rate_array
 
-    def build_(self):
+    def _build(self):
         self._rate_array = self._rate
