@@ -7,73 +7,65 @@ import numpy as np
 
 class CombinedSpikeBuilder(BaseSpikeBuilder):
     """
-    This is a common base class that provides interface functions necessary for any
-    spike builder that is dependent on other spike builders. In the interest of sanity,
-    we have the following requirements
-
-    1.  All the Spike Builders MUST have equal resolution i.e. steps_per_ms must match
-
-    2.  The interaction of the common properties with the properties of the constituent
-        spike biulders are as follows.
-
-        time_length
-          This is implementation specific. It may be a completely independent property,
-          in which case, no work need be done. If it is a dependant property, then the
-          calculation and assignment of the same should be done in the _preprocess
-          function prior to calling the _preprocess funtion of the CombinedSpikeBuilder
-          class. Naturally, the settability must be decided by the subclass
-
-        steps_per_ms:
-          The common steps_per_ms of all the spike builders. NOT SETTABLE
-
-        channels:
-          The union of channels from all the spike builders. NOT SETTABLE
-
-        start_time:
-          This is as in BaseSpikeBuilder. i.e. it is an independant variable.
-
-          *NOTE*:
-            The start time of each of the time patterns in self._final_spike_builders_list
-            is treated RELATIVE to the start time of the combined pattern when building
-            spikes.
-
-    It has the following structure:
-
-    1.  A self._spike_builders variable that gets edited based on the spike builders
-        added and removed via the functions defined below
-
-    2.  A self._spike_builders_name_map variable that contains any name mappings
-        defined for the generators in self._spike_builders
-
-    3.  A self._final_spike_builders_list that is populated with the actual spike builders
-        whose outputs are linearly combined. This is a derived variable and must
-        be set in the _preprocess function of the inheriting class before the
-        _preprocess of this class is called.
-
-        The derivation of self._final_spike_builders_list from self._spike_builders
-        is the defining attribute of the derived class. Other defining attributes
-        are additional validations, variables, setting of time_length and start_time
+    This is the class that implements mechanisms for generating combined output
+    from one or more spike builders.
 
     Initialization
     ==============
 
-    The only parameters parsed in the input dictionary are:
+    :param spike_builder_list: This is the list of the constituent spike builders.
+        Each of the spike builders must have the same resolution.
 
-    *spike_builders*
-      This represents the spike builders in this spike generator
+    :param repeat_instance_list: This is a list of repeat instances that represents how
+        the above mentioned spike builders are combined.
 
-      This is a python iterable whose elements are one of the following
-        1. A tuple ('name', spike_builder_obj)
-        2. A tuple (None, spike_builder_obj)
-        3. A spike_builder_obj
+        The repeat instances are 2 or 3-tuples with the first value being the
+        starting time (>=0), and the second value being the index of the spike
+        builder to use, and the third value if specified must be the time length to
+        stretch the spike builder.
 
-      Every spike builder added is assigned a unique identifying number (incremented
-      every add). If Name is specified, then the said builder may be addressed by name
-      as well.
+    :param time_length: This must either be a float >= 0 or the string 'auto'. If
+        'auto' then the time length is inferred from the time lengths of the spike
+        builders according to their placement as described in the
+        `repeat_instance_list`.
 
-    *start_time*
-      This assigns the start time of the spikebuilder.
+        If the time length is specified (as a float i.e.), Then it is necessary
+        that this float is greater than the time length as inferred in the above
+        case. In this case, the spike builder will create an 'empty' spike train
+        (i.e. by generating no spikes) for the excess duration
 
+    Properties
+    ==========
+
+    Settable
+    --------
+
+    *time_length*: This is the time length as specified in the initialization
+      function. When getting the value, it is either automatically calculated (if
+      previously set to 'auto') or the previously set value is returned
+
+    *spike_builders*: This is the spike builders list as specified in the
+      initialization function. when getting, a tuple of IMMUTABLE spike builders is
+      returned
+
+    *repeat_instances*: This is the repeat_instances_list as specified in the
+      initialization function.  When getting it, a tuple of repeat_instances is
+      returned
+
+    Non-Settable
+    ------------
+
+    *steps_per_ms*:
+      resolution ins steps_per_ms
+
+    *channels*:
+      The array of channels
+
+    *spike_rel_step_array*:
+      See BaseSpikeBuilder
+
+    *spike_weight_array*:
+      See BaseSpikeBuilder
     """
 
     def __init__(self, spike_builder_list=[], repeat_instances_list=[], time_length='auto'):
@@ -193,7 +185,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
             built_builders.append(current_sb)
         self._spike_builders = tuple(spike_builders_list)
 
-        # Join the spikesteps and weights channel-wise accross builders
+        # Join the spike-steps and weights channel-wise across builders
         spike_steps_clubbed = [[] for __ in self._channels]
         spike_weights_clubbed = [[] for __ in self._channels]
         for i, builder in enumerate(built_builders):
