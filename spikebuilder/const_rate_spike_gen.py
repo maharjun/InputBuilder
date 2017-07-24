@@ -9,6 +9,13 @@ mtgen = mtrand.binomial.__self__
 
 
 class ConstRateSpikeBuilder(BaseSpikeBuilder):
+    """
+    =======================
+     ConstRateSpikeBuilder
+    =======================
+
+    This is a spiek 
+    """
 
     def __init__(self, rate,
                  channels=[], steps_per_ms=1, time_length=0,
@@ -106,11 +113,21 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
         return self._rate
 
     @rate.setter
-    def rate(self, rate_val):
-        if rate_val >= 0:
-            self._rate = float(rate_val)
+    def rate_val(self, rate_val):
+        assert hasattr(self, '_channels'), \
+            ("The 'rate' property depends of the channels property. Hence the"
+             " channels property must be set before setting the 'rate' property")
+        assert np.ndim(rate_val) <= 1, "'rate' can be at-most 1-D NDArray"
+        assert np.size(rate_val) == 1 or np.size(rate_val) == len(self._channels), \
+            "'rate' must be either size 1 or the same size as the number of channels"
+
+        if np.size(rate_val) == 1:
+            rate_val = np.asscalar(rate_val)
+            assert rate_val >= 0, "'rate' must be a non-negative number if scalar"
         else:
-            raise ValueError("'rate' must be a non-negative float")
+            rate_val = np.array(rate_val).reshape((len(self._channels), 1))
+            assert np.all(rate_val >= 0), "'rate' must be a non-negative number"
+        self._rate = rate_val
 
     @property
     def rng(self):

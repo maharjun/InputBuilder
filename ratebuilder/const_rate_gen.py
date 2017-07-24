@@ -9,8 +9,8 @@ class ConstRateBuilder(BaseRateBuilder):
                  channels=[], steps_per_ms=1, time_length=0):
         super().__init__()  # only purpose is to run BaseGenericBuilder init
 
-        self.rate = rate
         self.channels = channels
+        self.rate = rate
         self.steps_per_ms = steps_per_ms
         self.time_length = time_length
 
@@ -26,14 +26,26 @@ class ConstRateBuilder(BaseRateBuilder):
 
     @rate.setter
     def rate(self, rate):
-        assert rate >= 0, "'rate' must be a non-negative number"
+        assert hasattr(self, '_channels'), \
+            ("The 'rate' property depends of the channels property. Hence the"
+             " channels property must be set before setting the rate property")
+        assert np.ndim(rate) <= 1, "'rate' can be at-most 1-D NDArray"
+        assert np.size(rate) == 1 or np.size(rate) == len(self._channels), \
+            "'rate' must be either size 1 or the same size as the number of channels"
+
+        if np.size(rate) == 1:
+            rate = np.asscalar(rate)
+            assert rate >= 0, "'rate' must be a non-negative number if scalar"
+        else:
+            rate = np.array(rate).reshape((len(self._channels), 1))
+            assert np.all(rate >= 0), "'rate' must be a non-negative number"
         self._rate = rate
 
     @property
     def steps_per_ms(self):
         """
-        Get or Set the time resolution of the rate pattern by specifying an integer representing
-        the number of time steps per ms
+        Get or Set the time resolution of the rate pattern by specifying an integer
+        representing the number of time steps per ms
 
         :return:
         """
@@ -54,10 +66,12 @@ class ConstRateBuilder(BaseRateBuilder):
         """
         Get or set the time length of the rate pattern in ms.
 
-        :GET: This function will return the time length of the built rate pattern i.e. the
-            rounded time length. i.e. `self._steps_length/self.steps_per_ms`
+        :GET: This function will return the time length of the built rate pattern
+            i.e. the rounded time length. i.e.
+            `self._steps_length/self.steps_per_ms`
 
-        :SET: This function will round the time to the nearest time step and use that as the actual
+        :SET: This function will round the time to the nearest time step and use
+            that as the actual
             time length.
 
         :return: An np.float64 scalar
@@ -77,8 +91,8 @@ class ConstRateBuilder(BaseRateBuilder):
     @property
     def channels(self):
         """
-        Returns channels property. In order to make it writable, copy it via X.channels.copy() or
-        np.array(X.channels)
+        Returns channels property. In order to make it writable, copy it via
+        X.channels.copy() or np.array(X.channels)
         """
         return self._channels
 
