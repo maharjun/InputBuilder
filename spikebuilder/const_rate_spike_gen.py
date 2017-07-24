@@ -7,11 +7,12 @@ import numpy as np
 
 mtgen = mtrand.binomial.__self__
 
+
 class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
     def __init__(self, rate,
-                       channels=[], steps_per_ms=1, time_length=0,
-                       rng=mtgen):
+                 channels=[], steps_per_ms=1, time_length=0,
+                 rng=mtgen):
 
         super().__init__()
 
@@ -82,7 +83,7 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
         Property that returns the relative spike step array.
 
         :returns: an array of arrays A such that::
-            
+
               A[i][j] = TIME STEP of the jth spike of the ith neuron relative to the
                         beginning of the spike pattern
         """
@@ -95,7 +96,7 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
         Property that returns the spike weight array.
 
         :returns: an array of arrays A such that::
-            
+
               A[i][j] = WEIGHT of the jth spike of the ith neuron
         """
         return self._spike_weight_array
@@ -123,12 +124,12 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
         super()._build()
         nchannels = self.channels.size
         spike_weight_array = self._rng.poisson(lam=self.rate/(1000*self.steps_per_ms),
-                                        size=(nchannels, self.steps_length)).astype(np.uint32)
+                                               size=(nchannels, self.steps_length)).astype(np.uint32)
         self._spike_rel_step_array = np.ndarray(nchannels, dtype=object)
         self._spike_weight_array = np.ndarray(nchannels, dtype=object)
 
         for i in range(nchannels):
-            self._spike_rel_step_array[i] = np.argwhere(spike_weight_array[i,:])[:,0].astype(np.uint32)
+            self._spike_rel_step_array[i] = np.argwhere(spike_weight_array[i, :])[:, 0].astype(np.uint32)
             self._spike_weight_array[i] = spike_weight_array[i, self._spike_rel_step_array[i]]
             self._spike_rel_step_array[i].setflags(write=False)
             self._spike_weight_array[i].setflags(write=False)

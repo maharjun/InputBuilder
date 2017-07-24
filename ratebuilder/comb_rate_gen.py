@@ -1,9 +1,10 @@
 from . import BaseRateBuilder
-from genericbuilder.propdecorators import *
+from genericbuilder.propdecorators import requires_built, prop_setter
 from genericbuilder.tools import get_builder_type
 
-from .combination_funcs import *
+from .combination_funcs import combine_sum
 import numpy as np
+
 
 class CombinedRateBuilder(BaseRateBuilder):
 
@@ -46,7 +47,6 @@ class CombinedRateBuilder(BaseRateBuilder):
         else:
             self._transform = transform_
 
-
     @property
     def use_hist_eq(self):
         return self._use_hist_eq
@@ -58,7 +58,7 @@ class CombinedRateBuilder(BaseRateBuilder):
     @property
     def rate_builders(self):
         return self._rate_builders
-        
+
     @prop_setter
     def add_rate_builders(self, rate_builder_array):
         if rate_builder_array is None:
@@ -71,7 +71,6 @@ class CombinedRateBuilder(BaseRateBuilder):
                 else:
                     raise TypeError("the rate_builder_array must contain only rate builder objects")
             self._rate_builders = self._rate_builders + tuple(new_rate_builders)
-    
 
     # channels and steps_per_ms cannot be set as they are entirely derived from the constiuent
     # rate-builders
@@ -116,13 +115,13 @@ class CombinedRateBuilder(BaseRateBuilder):
         # Then, for each rate-builder we extend the first dimention to be equal to the number of
         # channels with 0 as the output wherever there is no channel. If it is a zero dimensional
         # array, we simply let it be
-        channel_index_map = {self._channels[i]:i for i in range(nchannels)}
+        channel_index_map = {self._channels[i]: i for i in range(nchannels)}
         output_rate_array_list = []
         for rb in self._rate_builders:
             if np.isscalar(rb.rate_array):
                 output_rate_array_list.append(rb.rate_array)
             else:
-                channel_index_list =  [channel_index_map[ch] for ch in rb._channels]
+                channel_index_list = [channel_index_map[ch] for ch in rb._channels]
                 extended_rate_array = np.zeros((nchannels,) + rb.rate_array.shape[1:])
                 extended_rate_array[channel_index_list, ...] = rb.rate_array
                 output_rate_array_list.append(extended_rate_array)
@@ -134,8 +133,8 @@ class CombinedRateBuilder(BaseRateBuilder):
         self._rate_array = final_rate_array
 
 
-#histogram matching
-#http://stackoverflow.com/questions/32655686/histogram-matching-of-two-images-in-python-2-x (users/1461210/ali-m)
+# histogram matching
+# http://stackoverflow.com/questions/32655686/histogram-matching-of-two-images-in-python-2-x (users/1461210/ali-m)
 def hist_match(source, template):
     """
     Adjust the pixel values of a grayscale image such that its histogram
@@ -160,8 +159,8 @@ def hist_match(source, template):
 
     # get the set of unique pixel values and their corresponding indices and
     # counts
-    ###s_values, bin_idx, s_counts = np.unique(source, return_inverse=True, return_counts=True) #requires numpy 1.9
-    ###t_values, t_counts = np.unique(template, return_counts=True) #requires numpy 1.9
+    # s_values, bin_idx, s_counts = np.unique(source, return_inverse=True, return_counts=True) #requires numpy 1.9
+    # t_values, t_counts = np.unique(template, return_counts=True) #requires numpy 1.9
 
     s_values, bin_idx = np.unique(source, return_inverse=True)
     s_counts = np.bincount(bin_idx)

@@ -12,6 +12,7 @@ from spikebuilder.test_tools import convert_poisson_seq_to_IAT, analyse_exponent
 
 import ipdb
 
+
 def main():
 
     ou_gen = OURateBuilder(
@@ -21,11 +22,11 @@ def main():
         mean=2,
         sigma=1,
         theta=1)
-    
+
     spike_gen = RateBasedSpikeBuilder(
         rate_builder=ou_gen,
         transform=np.abs
-        )
+    )
 
     before = time.clock()
     spike_gen.build()
@@ -45,6 +46,7 @@ def main():
     analyse_exponential_distrib(IAT_seq, 2)
     plt.hist(IAT_seq, 100)
     plt.show()
+
 
 if __name__ == '__main__':
     with ipdb.launch_ipdb_on_exception():

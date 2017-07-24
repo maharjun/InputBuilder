@@ -3,9 +3,10 @@ __author__ = 'Arjun'
 import numpy as np
 
 from genericbuilder.baseclass import BaseGenericBuilder
-from genericbuilder.propdecorators import *
+from genericbuilder.propdecorators import requires_built
 
 from abc import abstractmethod
+
 
 class BaseSpikeBuilder(BaseGenericBuilder):
     """
@@ -51,7 +52,7 @@ class BaseSpikeBuilder(BaseGenericBuilder):
     # ------------------------------------------------------------------------------------- #
     # CORE INTERFACE FEATURES
     # ------------------------------------------------------------------------------------- #
-    # 
+    #
     # All the core interface features (abstract functions) must be implemeted in
     # the subclass
 
@@ -119,10 +120,10 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         Property that returns the relative spike step array.
 
         :returns: an array of arrays A such that::
-            
+
               A[i][j] = TIME STEP of the jth spike of the ith neuron relative to the
                         beginning of the spike pattern
-        
+
         NOTE: This is a core interface property that must be implemented (only the
               getter) in the subclass spike builders.
         """
@@ -136,9 +137,9 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         Property that returns the spike weight array.
 
         :returns: an array of arrays A such that::
-            
+
               A[i][j] = WEIGHT of the jth spike of the ith neuron
-        
+
         NOTE: This is a core interface property that must be implemented (only the
               getter) in the subclass spike builders.
         """

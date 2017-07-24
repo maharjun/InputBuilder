@@ -2,6 +2,7 @@ from . import BaseRateBuilder
 from genericbuilder.propdecorators import requires_built
 import numpy as np
 
+
 class ConstRateBuilder(BaseRateBuilder):
 
     def __init__(self, rate,

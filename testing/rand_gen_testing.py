@@ -6,6 +6,7 @@ import numpy as np
 import copy
 import ipdb
 
+
 def main():
     global_rng = random.RandomState(30)
 
@@ -33,10 +34,11 @@ def main():
     ou_gen_temp_result1 = ou_gen.rate_array.copy()
     spike_gen_temp_result1 = copy.deepcopy(spike_gen.spike_rel_step_array)
 
-
     assert np.all(ou_gen_temp_result == ou_gen_temp_result1), "The results are inconsistent"
-    assert all([np.all(spike_gen_temp_result[i] == spike_gen_temp_result1[i]) for i in range(len(spike_gen.channels))]) , "The results are inconsistent"
+    assert all(np.all(spike_gen_temp_result[i] == spike_gen_temp_result1[i])
+               for i in range(len(spike_gen.channels))), "The results are inconsistent"
     print("The results are consistent")
+
 
 if __name__ == '__main__':
     with ipdb.launch_ipdb_on_exception():

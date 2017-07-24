@@ -4,6 +4,7 @@ import numpy as np
 from numba import jit
 from scipy.stats import kstest
 
+
 @jit("double[:](double[:], uint32, uint32[:])", cache=True, nopython=True)
 def convert_poisson_seq_to_IAT(rate_seq, steps_per_ms, poisson_sampling_seq):
     """
@@ -40,7 +41,7 @@ def analyse_exponential_distrib(data, expected_mean=2, error_bound=0.05):
     """
 
     print("Statistics for estimated dstribution")
-    
+
     mean_est = np.mean(data)
     var_est = np.mean((data - expected_mean)**2)
     print("Mean    : {:<10.5f} Expected: {:<10.5f}".format(mean_est, expected_mean))
@@ -50,6 +51,7 @@ def analyse_exponential_distrib(data, expected_mean=2, error_bound=0.05):
     assert D < error_bound, \
         "The Mean And Variance are not within the {:.0f}% bounds".format(error_bound*100)
     return (mean_est, var_est)
+
 
 def getTotalIATVector(spike_builder, rate_array):
 
@@ -63,7 +65,7 @@ def getTotalIATVectorFrom(spike_rel_step_array,
                           steps_per_ms,
                           rate_array,
                           spike_weight_array=None):
-    
+
     steps_length = rate_array.shape[1]
 
     if spike_weight_array is None:
@@ -72,17 +74,16 @@ def getTotalIATVectorFrom(spike_rel_step_array,
 
     assert rate_array.shape[0] == spike_rel_step_array.size
     assert spike_weight_array[0].size == spike_rel_step_array[0].size
-    assert all(x.size == y.size for x,y in zip(spike_rel_step_array, spike_weight_array))
+    assert all(x.size == y.size for x, y in zip(spike_rel_step_array, spike_weight_array))
     assert all(np.all(x < steps_length) for x in spike_rel_step_array)
 
     IATVectors = []
     for i, non_zero_spike_inds in enumerate(spike_rel_step_array):
         poisson_sampling_sequence = np.zeros(steps_length, dtype=np.uint32)
         poisson_sampling_sequence[non_zero_spike_inds] = spike_weight_array[i]
-        IATVectors.append(convert_poisson_seq_to_IAT(
-                              rate_array[i,:],
-                              steps_per_ms,
-                              poisson_sampling_sequence))
+        IATVectors.append(convert_poisson_seq_to_IAT(rate_array[i, :],
+                                                     steps_per_ms,
+                                                     poisson_sampling_sequence))
         TotalIATVector = np.concatenate(IATVectors)
         # print("Finished Channel Index ", i)
     return TotalIATVector

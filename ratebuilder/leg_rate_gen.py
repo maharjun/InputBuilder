@@ -3,40 +3,41 @@ from . import BaseRateBuilder
 import numpy as np
 from numpy.random import mtrand
 from numba import jit
+from genericbuilder.propdecorators import requires_built
+
 mtgen = mtrand.binomial.__self__
 
-from genericbuilder.propdecorators import requires_built
 
 class LegacyRateBuilder(BaseRateBuilder):
     """
     =====================
       LegacyRateBuilder
     =====================
-    
+
     Introduction
     ============
 
     This is a rate builder that mimics the behaviour of the rate builder that
     is currently being used in christophs simulation. It simulates a reflecting
     boundary and is thus slow without numba.
-    
+
     Initialization / Parameters
     ===========================
 
     The following difference equation is simulated
-    
+
     Algorithm Parameters
     --------------------
 
-    *steps_per_ms*    
+    *steps_per_ms*
       Integer [1/ms] representing the number of simulation steps ms of the current simulation
-    
+
     *channels*
       An iterable representing the channel indices that the builder is
       supposed to build the rate for
-    
+
     *time_length*
-      Time length in ms representing the length of the generated rate 
+      Time length in ms representing the length of the generated rate
       pattern
 
     *mean*
@@ -62,7 +63,7 @@ class LegacyRateBuilder(BaseRateBuilder):
     ----------------
 
     *rng*
-      Specify a random generator for use. If unspecified, defaults to the 
+      Specify a random generator for use. If unspecified, defaults to the
       one used by numpy)
 
     Algorithm
@@ -83,8 +84,8 @@ class LegacyRateBuilder(BaseRateBuilder):
     built_properties = 'rate_array'
 
     def __init__(self, mean, sigma, theta, delay, max_rate,
-                       channels=[], steps_per_ms=1, time_length=0,
-                       rng=mtgen):
+                 channels=[], steps_per_ms=1, time_length=0,
+                 rng=mtgen):
         """
         Relevant fields in the config_dict can be seen in the Parameters
         section of the Class documentation
@@ -112,12 +113,12 @@ class LegacyRateBuilder(BaseRateBuilder):
 
     def _validate(self):
         pass
-    
+
     @staticmethod
     @jit(nopython=True, cache=True)
     def _fast_build(std_normal_array, sigma, mean, theta, steps_per_ms, log_max_rate):
         x = np.zeros_like(std_normal_array, np.float64)
-        x[:, 0] = mean + std_normal_array[:,0]
+        x[:, 0] = mean + std_normal_array[:, 0]
         sim_length = std_normal_array.shape[1]
         for i in range(sim_length-1):
             x[:, i+1] = x[:, i] + (theta*(mean - x[:, i]) + std_normal_array[:, i+1]*sigma)/steps_per_ms
@@ -145,7 +146,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         self._rate_array = np.exp(x[:, self._delay:])
         self._rate_array.setflags(write=False)
 
-
     @property
     def mean(self):
         return self._mean
@@ -153,7 +153,6 @@ class LegacyRateBuilder(BaseRateBuilder):
     @mean.setter
     def mean(self, mean_):
         self._mean = np.float_(mean_)
-    
 
     @property
     def sigma(self):
@@ -165,7 +164,6 @@ class LegacyRateBuilder(BaseRateBuilder):
             self._sigma = np.float_(sigma_)
         else:
             raise ValueError("'sigma' must be positive")
-    
 
     @property
     def theta(self):
@@ -177,7 +175,6 @@ class LegacyRateBuilder(BaseRateBuilder):
             self._theta = np.float_(theta_)
         else:
             raise ValueError("'theta' must be between 0 and {} for stable filter".format(self._steps_per_ms))
-    
 
     @property
     def delay(self):
@@ -189,7 +186,6 @@ class LegacyRateBuilder(BaseRateBuilder):
             self._delay = np.uint32(delay_ + 0.5)
         else:
             raise ValueError("'delay' must be a positive integer")
-    
 
     @property
     def max_rate(self):
@@ -201,7 +197,6 @@ class LegacyRateBuilder(BaseRateBuilder):
             self._max_rate = np.float_(max_rate_)
         else:
             raise ValueError("'max_rate' must be positive")
-    
 
     @property
     def rng(self):
@@ -279,4 +274,3 @@ class LegacyRateBuilder(BaseRateBuilder):
         via X.rate_array.copy() or np.array(X.rate_array)
         """
         return self._rate_array
-

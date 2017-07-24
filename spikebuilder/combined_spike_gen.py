@@ -1,16 +1,16 @@
 from . import BaseSpikeBuilder
-from genericbuilder.propdecorators import prop_setter, prop_getter, requires_built
-from genericbuilder.tools import get_builder_type, ImmutableDict
-from timeit import default_timer as timer
+from genericbuilder.propdecorators import requires_built
+from genericbuilder.tools import get_builder_type
 
 import numpy as np
+
 
 class CombinedSpikeBuilder(BaseSpikeBuilder):
     """
     This is a common base class that provides interface functions necessary for any
     spike builder that is dependent on other spike builders. In the interest of sanity,
     we have the following requirements
-    
+
     1.  All the Spike Builders MUST have equal resolution i.e. steps_per_ms must match
 
     2.  The interaction of the common properties with the properties of the constituent
@@ -25,8 +25,8 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
         steps_per_ms:
           The common steps_per_ms of all the spike builders. NOT SETTABLE
-        
-        channels: 
+
+        channels:
           The union of channels from all the spike builders. NOT SETTABLE
 
         start_time:
@@ -36,7 +36,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
             The start time of each of the time patterns in self._final_spike_builders_list
             is treated RELATIVE to the start time of the combined pattern when building
             spikes.
-    
+
     It has the following structure:
 
     1.  A self._spike_builders variable that gets edited based on the spike builders
@@ -53,7 +53,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         The derivation of self._final_spike_builders_list from self._spike_builders
         is the defining attribute of the derived class. Other defining attributes
         are additional validations, variables, setting of time_length and start_time
-        
+
     Initialization
     ==============
 
@@ -80,7 +80,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         # self._final_spike_builders_list = [] [Must be set in preprocess of derived class]
 
         # Filtering Input Dict
-        
+
         # Super Initialization
         super().__init__()  # only purpose is to run BaseGenericBuilder init
 
@@ -115,7 +115,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
             max_time_length = max(start + self._spike_builders[ind].steps_length/self._steps_per_ms
                                   for start, ind in self._repeat_instances)
             assert max_time_length <= self._time_length, \
-                   "The Constituent Spike Builders are not within time bounds"
+                "The Constituent Spike Builders are not within time bounds"
 
         consisent_step_size = (len(set(sb.steps_per_ms for sb in self._spike_builders)) <= 1)
         assert consisent_step_size, "All spike builders must have consistent stepsize"
@@ -142,15 +142,15 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
                 self._time_length_is_derived = False
             else:
                 raise ValueError("'time_length' must be a non-negative number")
-    
+
     @property
     def spike_builders(self):
         return self._spike_builders
-    
+
     @spike_builders.setter
     def spike_builders(self, spike_builder_list):
         assert all(get_builder_type(sb) == 'spike' for sb in spike_builder_list), \
-                "'spike_builder_list' must contain objects inheriting from BaseSpikeBuilder"
+            "'spike_builder_list' must contain objects inheriting from BaseSpikeBuilder"
         self._spike_builders = tuple(sb.copy().set_immutable() for sb in spike_builder_list)
 
     @property
@@ -163,7 +163,7 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
     @repeat_instances.setter
     def repeat_instances(self, repeat_instances_list):
-        assert all(len(ri) in {2,3} and ri[0] >= 0 and 0 <= ri[1] < len(self._spike_builders)
+        assert all(len(ri) in {2, 3} and ri[0] >= 0 and 0 <= ri[1] < len(self._spike_builders)
                    for ri in repeat_instances_list), \
             ("The repeat instances must be 2 or 3-tuples with the first value being the"
              " starting time (>=0), and the second value being the index of the spike"
@@ -183,7 +183,6 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         # each run, that state is incremented for each build of a particular generator
         # The self._spike_builders array is updated to reflect the new post-built
         # generators
-        time_build_start = timer()
         spike_builders_list = list(self._spike_builders)
         built_builders = []  # create one built copy of the builder for each repeat index
         for start, index, stretch in self._repeat_instances:
@@ -193,9 +192,6 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
             spike_builders_list[index] = current_sb.build().set_immutable()
             built_builders.append(current_sb)
         self._spike_builders = tuple(spike_builders_list)
-        time_build_end = timer()
-
-        time_join_start = timer()
 
         # Join the spikesteps and weights channel-wise accross builders
         spike_steps_clubbed = [[] for __ in self._channels]
@@ -224,12 +220,10 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         spike_steps_joined = spike_steps_unique
 
         self._spike_rel_step_array = np.array(spike_steps_joined, dtype=object)
-        self._spike_weight_array   = np.array(spike_weights_joined, dtype=object)
-        time_join_end = timer()
+        self._spike_weight_array = np.array(spike_weights_joined, dtype=object)
 
         self._spike_rel_step_array.setflags(write=False)
         self._spike_weight_array.setflags(write=False)
-
 
     @property
     @requires_built

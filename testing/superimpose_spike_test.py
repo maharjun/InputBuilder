@@ -2,13 +2,14 @@ __author__ = 'Arjun'
 
 import ipdb
 
+import numpy as np
+
 with ipdb.launch_ipdb_on_exception():
     from spikebuilder.test_tools import analyse_exponential_distrib, getTotalIATVector
     from spikebuilder import CombinedSpikeBuilder
     from spikebuilder import RateBasedSpikeBuilder
     from ratebuilder import OURateBuilder
 
-import numpy as np
 
 def main():
     # It is assumed that the following rate gen will almost never produce
@@ -25,7 +26,7 @@ def main():
                                                                       spike_pattern2,
                                                                       spike_pattern3,
                                                                       spike_pattern4],
-                                                  repeat_instances_list=[(0, 0), 
+                                                  repeat_instances_list=[(0, 0),
                                                                          (80000, 1),
                                                                          (80000, 2),
                                                                          (160000, 3)])
@@ -72,12 +73,12 @@ def main():
         raise Exception("The combined spike builder processed an inconsistent stepsize")
 
     # Change pat3 to contain a new rate generator
-    ou_rate_builder.channels = [4,5,6]
+    ou_rate_builder.channels = [4, 5, 6]
     spike_pattern3.rate_builder = ou_rate_builder.build_copy().set_frozen()
     curr_spike_builders = list(combined_spike_builder.spike_builders)
     curr_spike_builders[2] = spike_pattern3
     combined_spike_builder.spike_builders = curr_spike_builders
-    
+
     combined_spike_builder.build()
     spike_builds = list(combined_spike_builder.spike_builders)
 
@@ -86,12 +87,13 @@ def main():
         np.vstack((spike_builds[0].rate_builder.rate_array, np.zeros((3, spike_builds[0].steps_length)))),
         np.vstack((spike_builds[1].rate_builder.rate_array, spike_builds[2].rate_builder.rate_array)),
         np.vstack((spike_builds[3].rate_builder.rate_array, np.zeros((3, spike_builds[3].steps_length))))
-        ))
+    ))
 
     # Analyse the spikes. If it works it means that comibining sifferent channel
     # and start time change works fine
     TotalIATVector = getTotalIATVector(combined_spike_builder, combined_rate_array)
     analyse_exponential_distrib(TotalIATVector)
+
 
 if __name__ == '__main__':
     with ipdb.launch_ipdb_on_exception():

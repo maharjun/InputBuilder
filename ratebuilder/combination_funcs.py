@@ -1,17 +1,19 @@
 # combination_funcs.py
-# 
+#
 #   Author: Arjun Rao
-# 
+#
 # This file contains functions and metafunctions that perform the combination of two or more arrays
 # to give a combined array. This is used to provide arguments to the CombinedRateBuilder.
 
 import numpy as np
+
 
 def combine_sum(rate_array_list):
     return_arr = 0
     for arr in rate_array_list:
         return_arr = return_arr + arr
     return return_arr
+
 
 class combine_sigmoid:
     """

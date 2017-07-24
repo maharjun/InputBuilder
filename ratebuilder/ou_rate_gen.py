@@ -1,7 +1,7 @@
 __author__ = 'Arjun'
 
 from . import BaseRateBuilder
-from genericbuilder.propdecorators import *
+from genericbuilder.propdecorators import requires_built
 
 import numpy as np
 from numpy.random import mtrand
@@ -13,8 +13,8 @@ mtgen = mtrand.binomial.__self__
 
 class OURateBuilder(BaseRateBuilder):
     """Rate Generator via Homogenous OU Process
-    
-    This builder generates the rate array based on a discrete approximation of a continuous 
+
+    This builder generates the rate array based on a discrete approximation of a continuous
     time OU Process. The approximation matches the rd[0] and rd[1] of the discrete AR1
     process representing the OU process, with the rc(0) and rc(time_step) of the continuous
     time process. The parameters specified are the parameters for the continuous time process.
@@ -30,13 +30,13 @@ class OURateBuilder(BaseRateBuilder):
         dx = theta(mu - x)dt + sigma*dW
 
     where W is a wiener process with variance given as
-        
+
         var(W(t+h) - W(t)) = alpha h
         with alpha = 1/ms
 
     The following variables are the discrete time (DT) equivs (with h [ms] as the
     generation time step)
-    
+
     1.  mean_DT  - [Hz]
     2.  sigma_DT - [Hz/ms]
     3.  theta_DT - [1/ms]
@@ -57,22 +57,22 @@ class OURateBuilder(BaseRateBuilder):
     built_properties = ['rate_array']
 
     def __init__(self, mean, sigma, theta,
-                       channels=[], steps_per_ms=1, time_length=0,
-                       rng=mtgen):
+                 channels=[], steps_per_ms=1, time_length=0,
+                 rng=mtgen):
 
         super().__init__()  # only purpose is to run BaseGenericBuilder init
-        
+
         # Initialize Primary Data members
         self._mean = np.float64(0)
         self._sigma = np.float64(1)
         self._theta = np.float64(1)
-        
+
         self._steps_length = np.uint32(0)
         self._time_length = np.float64(0)
         self._channels = np.zeros(0)
 
         self._rng = mtgen
-        
+
         # Setting Core parameters
         self.steps_per_ms = steps_per_ms
         self.channels = channels
@@ -80,7 +80,7 @@ class OURateBuilder(BaseRateBuilder):
 
         # setting random number generator
         self.rng = rng
-        
+
         # Setting OU Parameters
         self.mean = mean
         self.sigma = sigma
@@ -267,7 +267,7 @@ class OURateBuilder(BaseRateBuilder):
         sigma_DT = self._DT_params.sigma
         mean = self._DT_params.mean
         h = 1 / self._steps_per_ms
-        
+
         # # Debug prints
         # print("CT variance: {:<10.5f}".format(self._sigma**2/(2*self._theta)))
         # print("DT variance: {:<10.5f}".format(sigma_DT**2*h/(theta_DT*(2 - theta_DT*h))))
@@ -283,7 +283,7 @@ class OURateBuilder(BaseRateBuilder):
         curr_rate_array_shape = (self._channels.size, self._steps_length)
 
         # Calculate Initial Condition from Steady state distribution of
-        # OU Process. This way we wont have to wait for the process to burn in 
+        # OU Process. This way we wont have to wait for the process to burn in
         steady_state_SD = self._sigma / np.sqrt(2 * self._theta)
         rate_array_init = self._rng.normal(loc=0, scale=steady_state_SD, size=(self._channels.size, 1))
         filter_init_cond = (1 - theta_DT * h) * rate_array_init

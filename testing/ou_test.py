@@ -28,17 +28,18 @@ ou_gen = OURateBuilder(**TotalParams)
 ou_gen.build()
 
 # Check Distribution
-mean  = OUParams['mean']
+mean = OUParams['mean']
 sigma = OUParams['sigma']
 theta = OUParams['theta']
 print("FOR DISTRIBUTION TESTING:\n")
 print("Kurtosis   : {:<10.5f}Expected: {:10.5f}".format(st.kurtosis(ou_gen.rate_array.ravel(), fisher=True), 0))
 print("Mean       : {:<10.5f}Expected: {:10.5f}".format(np.mean(ou_gen.rate_array.ravel()), mean))
-print("Variance   : {:<10.5f}Expected: {:10.5f}".format(np.mean((ou_gen.rate_array.ravel() - mean)**2), sigma**2/(2*theta)))
+print("Variance   : {:<10.5f}Expected: {:10.5f}".format(np.mean((ou_gen.rate_array.ravel() - mean)**2),
+                                                        sigma**2/(2*theta)))
 print("OneStepCorr: {:<10.5f}Expected: {:10.5f}".format(
     np.mean(
-        (ou_gen.rate_array[:, :-1].ravel()-mean)
-        *(ou_gen.rate_array[:, 1:].ravel()-mean)), sigma**2*np.exp(-theta/ou_gen.steps_per_ms)/(2*theta)))
+        (ou_gen.rate_array[:, :-1].ravel()-mean) *
+        (ou_gen.rate_array[:, 1:].ravel()-mean)), sigma**2*np.exp(-theta/ou_gen.steps_per_ms)/(2*theta)))
 
 OtherParamsConvergence = {
     'steps_per_ms': 1,
@@ -55,4 +56,5 @@ ou_gen2.build()
 print("FOR CONVERGENCE TESTING:\n")
 print("Kurtosis   : {:<10.5f}Expected: {:10.5f}".format(st.kurtosis(ou_gen2.rate_array.ravel(), fisher=True), 0))
 print("Mean       : {:<10.5f}Expected: {:10.5f}".format(np.mean(ou_gen2.rate_array.ravel()), mean))
-print("Variance   : {:<10.5f}Expected: {:10.5f}".format(np.mean((ou_gen2.rate_array.ravel() - mean)**2), sigma**2/(2*theta)))
+print("Variance   : {:<10.5f}Expected: {:10.5f}".format(np.mean((ou_gen2.rate_array.ravel() - mean)**2),
+                                                        sigma**2/(2*theta)))
