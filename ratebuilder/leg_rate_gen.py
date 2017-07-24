@@ -126,7 +126,6 @@ class LegacyRateBuilder(BaseRateBuilder):
         return x
 
     def _build(self):
-        print("Building Rate Array")
         nchannels = self._channels.size
         simlength = self._delay + self._steps_length
         sim_array_size = (nchannels, simlength)

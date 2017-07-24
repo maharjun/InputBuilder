@@ -230,8 +230,6 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         self._spike_rel_step_array.setflags(write=False)
         self._spike_weight_array.setflags(write=False)
 
-        print("Building Time: {} Joining Time: {}".format(time_build_end - time_build_start,
-                                                          time_join_end - time_join_start))
 
     @property
     @requires_built
