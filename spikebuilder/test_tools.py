@@ -72,8 +72,7 @@ def getTotalIATVectorFrom(spike_rel_step_array,
         spike_weight_array = [np.ones_like(x, dtype=np.uint32) for x in spike_rel_step_array]
         spike_weight_array = np.array(spike_weight_array, dtype=object)
 
-    assert rate_array.shape[0] == spike_rel_step_array.size
-    assert spike_weight_array[0].size == spike_rel_step_array[0].size
+    assert rate_array.shape[0] == spike_rel_step_array.shape[0]
     assert all(x.size == y.size for x, y in zip(spike_rel_step_array, spike_weight_array))
     assert all(np.all(x < steps_length) for x in spike_rel_step_array)
 

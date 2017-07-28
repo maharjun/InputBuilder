@@ -5,7 +5,7 @@
 from setuptools import setup
 setup(
     name="inputbuilder",
-    version="2.1.1",
+    version="2.1.2",
     packages=['ratebuilder', 'spikebuilder'],
     author="Arjun Rao",
     author_email="arjun210493@gmail.com",
