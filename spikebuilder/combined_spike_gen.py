@@ -81,31 +81,30 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
         self.repeat_instances = repeat_instances_list
         self.time_length = time_length
 
+    def _get_time_length_from_ri(self, ri):
+        if ri[2] is None:
+            return self._spike_builders[ri[1]].time_length
+        else:
+            return ri[2]
+
     def _preprocess(self):
         if self._spike_builders:
-            self._steps_per_ms = self._spike_builders[0].steps_per_ms
             common_channels = set.union(*[set(sb.channels) for sb in self._spike_builders])
             self._channels = np.array(sorted(common_channels), dtype=np.uint32)
         else:
-            self._steps_per_ms = 1
             self._channels = np.array(0, dtype=np.uint32)
 
         if self._time_length_is_derived:
-            def get_time_length_from_ri(ri):
-                if ri[2] is None:
-                    return self._spike_builders[ri[1]].steps_length/self._steps_per_ms
-                else:
-                    return ri[2]
-
             if self._spike_builders:
-                self._time_length = max(ri[0] + get_time_length_from_ri(ri) for ri in self._repeat_instances)
+                self._time_length = max(ri[0] + self._get_time_length_from_ri(ri)
+                                        for ri in self._repeat_instances)
             else:
                 self._time_length = 0
 
     def _validate(self):
         if not self._time_length_is_derived:
-            max_time_length = max(start + self._spike_builders[ind].steps_length/self._steps_per_ms
-                                  for start, ind in self._repeat_instances)
+            max_time_length = max(ri[0] + self._get_time_length_from_ri(ri)
+                                  for ri in self._repeat_instances)
             assert max_time_length <= self._time_length, \
                 "The Constituent Spike Builders are not within time bounds"
 
@@ -114,7 +113,10 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
 
     @property
     def steps_per_ms(self):
-        return self._steps_per_ms
+        if len(self._spike_builders):
+            return self._spike_builders[0].steps_per_ms
+        else:
+            return 1
 
     @property
     def channels(self):
