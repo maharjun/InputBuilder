@@ -23,8 +23,8 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
 
         super().__init__()
 
-        self.rate = rate
         self.channels = channels
+        self.rate = rate
         self.steps_per_ms = steps_per_ms
         self.time_length = time_length
         self.rng = rng
