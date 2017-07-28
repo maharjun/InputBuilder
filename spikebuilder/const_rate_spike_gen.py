@@ -113,7 +113,7 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
         return self._rate
 
     @rate.setter
-    def rate_val(self, rate_val):
+    def rate(self, rate_val):
         assert hasattr(self, '_channels'), \
             ("The 'rate' property depends of the channels property. Hence the"
              " channels property must be set before setting the 'rate' property")
