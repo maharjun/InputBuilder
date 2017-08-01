@@ -171,8 +171,8 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         correcty implemented
         """
         start_time_step = int(start_time*self.steps_per_ms + 0.5)
-        ret = np.ndarray(self.spike_rel_step_array.shape, dtype=object)
-        for i in range(ret.shape[0]):
+        ret = np.ndarray(len(self.spike_rel_step_array), dtype=object)
+        for i in range(len(ret)):
             ret[i] = self.spike_rel_step_array[i] + start_time_step
             ret[i].setflags(write=False)
         ret.setflags(write=False)
@@ -193,8 +193,8 @@ class BaseSpikeBuilder(BaseGenericBuilder):
         """
         steps_per_ms = self.steps_per_ms
         start_time_step = int(start_time*steps_per_ms + 0.5)
-        ret = np.ndarray(self.spike_rel_step_array.shape, dtype=object)
-        for i in range(ret.shape[0]):
+        ret = np.ndarray(len(self.spike_rel_step_array), dtype=object)
+        for i in range(len(ret)):
             ret[i] = (self.spike_rel_step_array[i] + start_time_step)/steps_per_ms
             ret[i].setflags(write=False)
         ret.setflags(write=False)

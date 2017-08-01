@@ -213,8 +213,15 @@ class CombinedSpikeBuilder(BaseSpikeBuilder):
                                                                                 spike_weights_joined)]
         spike_steps_joined = spike_steps_unique
 
-        self._spike_rel_step_array = np.array(spike_steps_joined, dtype=object)
-        self._spike_weight_array = np.array(spike_weights_joined, dtype=object)
+        # Convert explicitly to read-only list-of-lists to avoid collapsing into 2-D lists
+        self._spike_rel_step_array = np.ndarray(len(spike_steps_joined), dtype=object)
+        self._spike_weight_array = np.ndarray(len(spike_weights_joined), dtype=object)
+
+        for i, (spike_rel_step, spike_weight) in enumerate(zip(spike_steps_joined, spike_weights_joined)):
+            self._spike_rel_step_array[i] = spike_rel_step
+            self._spike_weight_array[i] = spike_weight
+            self._spike_rel_step_array[i].setflags(write=False)
+            self._spike_weight_array[i].setflags(write=False)
 
         self._spike_rel_step_array.setflags(write=False)
         self._spike_weight_array.setflags(write=False)
