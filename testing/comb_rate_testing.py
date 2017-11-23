@@ -5,7 +5,7 @@ with ipdb.launch_ipdb_on_exception():
     from ratebuilder import CombinedRateBuilder
     from ratebuilder import OURateBuilder
     from ratebuilder import LegacyRateBuilder
-    from ratebuilder.comb_rate_gen import combine_sigmoid
+    from ratebuilder.combination_funcs import combine_sigmoid
 
     import matplotlib
     matplotlib.use('Agg')
