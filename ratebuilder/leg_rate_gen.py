@@ -72,7 +72,7 @@ class LegacyRateBuilder(BaseRateBuilder):
     The following difference equation is simulated
 
         x[n+1] = x[n] + (theta*(mean - x[n]) + sigma*w[n])*(1/steps_per_ms)
-        x[n+1] = max_rate if x[n+1] > ln(max_rate)
+        x[n+1] = ln(max_rate) if x[n+1] > ln(max_rate)
 
     The initial conditions are x[0] = mean + N(0,1). The above equation is
     simulated for delay + time_length_in_steps number of steps. Then all
