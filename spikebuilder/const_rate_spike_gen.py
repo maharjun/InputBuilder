@@ -122,7 +122,7 @@ class ConstRateSpikeBuilder(BaseSpikeBuilder):
             "'rate' must be either size 1 or the same size as the number of channels"
 
         if np.size(rate_val) == 1:
-            rate_val = np.asscalar(rate_val)
+            rate_val = np.asscalar(np.array(rate_val))
             assert rate_val >= 0, "'rate' must be a non-negative number if scalar"
         else:
             rate_val = np.array(rate_val).reshape((len(self._channels), 1))
